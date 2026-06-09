@@ -1,7 +1,14 @@
 import { deleteCookie, getCookies, setCookie } from "@tanstack/react-start/server";
 import { createServerClient } from "@supabase/ssr";
 import { createClient } from "@supabase/supabase-js";
+import ws from "ws";
 import type { Database } from "@/lib/database.types";
+
+const serverRealtimeOptions = {
+  realtime: {
+    transport: ws as unknown as typeof WebSocket,
+  },
+} as const;
 
 function getServerEnv() {
   const url = process.env.SUPABASE_URL ?? process.env.VITE_SUPABASE_URL;
@@ -18,6 +25,7 @@ export function getSupabaseServerClient() {
   const { url, anonKey } = getServerEnv();
 
   return createServerClient<Database>(url, anonKey, {
+    ...serverRealtimeOptions,
     cookies: {
       getAll() {
         return Object.entries(getCookies()).map(([name, value]) => ({
@@ -54,6 +62,7 @@ export function getSupabaseServiceClient() {
   }
 
   return createClient<Database>(url, serviceRoleKey, {
+    ...serverRealtimeOptions,
     auth: {
       autoRefreshToken: false,
       persistSession: false,

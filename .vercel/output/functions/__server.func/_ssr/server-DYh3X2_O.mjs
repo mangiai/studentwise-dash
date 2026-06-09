@@ -1,6 +1,7 @@
 import { T as TSS_SERVER_FUNCTION, s as setCookie, d as deleteCookie, b as getCookies } from "./index.mjs";
 import { c as createServerClient } from "../_libs/supabase__ssr.mjs";
 import { c as createClient } from "../_libs/supabase__supabase-js.mjs";
+import { W as WebSocket } from "../_libs/ws.mjs";
 var createServerRpc = (serverFnMeta, splitImportFn) => {
   const url = "/_serverFn/" + serverFnMeta.id;
   return Object.assign(splitImportFn, {
@@ -8,6 +9,11 @@ var createServerRpc = (serverFnMeta, splitImportFn) => {
     serverFnMeta,
     [TSS_SERVER_FUNCTION]: true
   });
+};
+const serverRealtimeOptions = {
+  realtime: {
+    transport: WebSocket
+  }
 };
 function getServerEnv() {
   const url = process.env.SUPABASE_URL ?? process.env.VITE_SUPABASE_URL;
@@ -20,6 +26,7 @@ function getServerEnv() {
 function getSupabaseServerClient() {
   const { url, anonKey } = getServerEnv();
   return createServerClient(url, anonKey, {
+    ...serverRealtimeOptions,
     cookies: {
       getAll() {
         return Object.entries(getCookies()).map(([name, value]) => ({
@@ -52,6 +59,7 @@ function getSupabaseServiceClient() {
     throw new Error("Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY");
   }
   return createClient(url, serviceRoleKey, {
+    ...serverRealtimeOptions,
     auth: {
       autoRefreshToken: false,
       persistSession: false

@@ -38,46 +38,51 @@ function resolveUserRole(
 async function fetchAuthUser(): Promise<AuthUser | null> {
   if (!isSupabaseServerConfigured()) return null;
 
-  const supabase = getSupabaseServerClient();
-  const {
-    data: { user },
-    error,
-  } = await supabase.auth.getUser();
+  try {
+    const supabase = getSupabaseServerClient();
+    const {
+      data: { user },
+      error,
+    } = await supabase.auth.getUser();
 
-  if (error || !user) return null;
+    if (error || !user) return null;
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("full_name, role")
-    .eq("id", user.id)
-    .maybeSingle();
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("full_name, role")
+      .eq("id", user.id)
+      .maybeSingle();
 
-  const metaFullName =
-    typeof user.user_metadata?.full_name === "string"
-      ? user.user_metadata.full_name
-      : undefined;
-  const role = resolveUserRole(profile?.role, user.app_metadata);
-  const fullName = profile?.full_name ?? metaFullName ?? user.email ?? "User";
+    const metaFullName =
+      typeof user.user_metadata?.full_name === "string"
+        ? user.user_metadata.full_name
+        : undefined;
+    const role = resolveUserRole(profile?.role, user.app_metadata);
+    const fullName = profile?.full_name ?? metaFullName ?? user.email ?? "User";
 
-  if (
-    process.env.SUPABASE_SERVICE_ROLE_KEY &&
-    (!profile || profile.role !== role || profile.full_name !== fullName)
-  ) {
-    try {
-      await getSupabaseServiceClient()
-        .from("profiles")
-        .upsert({ id: user.id, full_name: fullName, role });
-    } catch (syncError) {
-      console.error("Profile sync failed:", syncError);
+    if (
+      process.env.SUPABASE_SERVICE_ROLE_KEY &&
+      (!profile || profile.role !== role || profile.full_name !== fullName)
+    ) {
+      try {
+        await getSupabaseServiceClient()
+          .from("profiles")
+          .upsert({ id: user.id, full_name: fullName, role });
+      } catch (syncError) {
+        console.error("Profile sync failed:", syncError);
+      }
     }
-  }
 
-  return {
-    id: user.id,
-    email: user.email ?? "",
-    fullName,
-    role,
-  };
+    return {
+      id: user.id,
+      email: user.email ?? "",
+      fullName,
+      role,
+    };
+  } catch (error) {
+    console.error("Auth lookup failed:", error);
+    return null;
+  }
 }
 
 export const getAuthUser = createServerFn({ method: "GET" }).handler(async () => fetchAuthUser());

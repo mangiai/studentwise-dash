@@ -115,103 +115,103 @@ async function getStartManifest(matchedRoutes) {
 const manifest = {
   "06eb8d06a0375e2d8a5409e1323f5b757c32664ec5951a4fc54137416be0fcb6": {
     functionName: "adminDeleteCourse_createServerFn_handler",
-    importer: () => import("./data-CBfeTu37.mjs")
+    importer: () => import("./data-CEaaFjpA.mjs")
   },
   "0f177057b3eedf551448672319e2edcf864b932ea83e342b067d992b5464c151": {
     functionName: "adminDeleteTeacher_createServerFn_handler",
-    importer: () => import("./data-CBfeTu37.mjs")
+    importer: () => import("./data-CEaaFjpA.mjs")
   },
   "1a97aa40280300c66046e063af9eb8241517d3ca2cfd4292d30f04c850083dc0": {
     functionName: "adminUpsertCourse_createServerFn_handler",
-    importer: () => import("./data-CBfeTu37.mjs")
+    importer: () => import("./data-CEaaFjpA.mjs")
   },
   "1c992a22673887e7539d78f909fadc2ecdc1437aa03e1d401ccb7da67c839712": {
     functionName: "fetchStudentAttendance_createServerFn_handler",
-    importer: () => import("./data-CBfeTu37.mjs")
+    importer: () => import("./data-CEaaFjpA.mjs")
   },
   "21708226ea39c855c08b3037a7f14da585af272c615a6cd16e78cad0f778b378": {
     functionName: "fetchDepartments_createServerFn_handler",
-    importer: () => import("./data-CBfeTu37.mjs")
+    importer: () => import("./data-CEaaFjpA.mjs")
   },
   "248c5540df6c0e294de2706ca8a47b528b375918427cb544d809d4f7e845c1fe": {
     functionName: "signOut_createServerFn_handler",
-    importer: () => import("./auth-DDDDXn-O.mjs")
+    importer: () => import("./auth-CNy96bMT.mjs")
   },
   "27a33e4debd6ab168eca59511cde63291174028f4c53b5dd4c7e35736c5e9e8c": {
     functionName: "fetchStudentCourses_createServerFn_handler",
-    importer: () => import("./data-CBfeTu37.mjs")
+    importer: () => import("./data-CEaaFjpA.mjs")
   },
   "2f63de82b1cf9780439b15e9ffcd528a0013567e6e3dddd145eb48e98ef6e68d": {
     functionName: "adminAssignInstructor_createServerFn_handler",
-    importer: () => import("./data-CBfeTu37.mjs")
+    importer: () => import("./data-CEaaFjpA.mjs")
   },
   "4653bac979dc566c839c98a53ac99755bb07c704bcf088b77feb9d57a4da1732": {
     functionName: "signIn_createServerFn_handler",
-    importer: () => import("./auth-DDDDXn-O.mjs")
+    importer: () => import("./auth-CNy96bMT.mjs")
   },
   "4a22e228ac3dec572222c3ac622eaff59615c9b086b053ef0f83f627240b404a": {
     functionName: "fetchAdminData_createServerFn_handler",
-    importer: () => import("./data-CBfeTu37.mjs")
+    importer: () => import("./data-CEaaFjpA.mjs")
   },
   "4d58b59035eedce7ce0138b80e99f8b926ccc5785931c8b58844e1fd3485cefb": {
     functionName: "fetchPortalDashboard_createServerFn_handler",
-    importer: () => import("./data-CBfeTu37.mjs")
+    importer: () => import("./data-CEaaFjpA.mjs")
   },
   "590186aa9e0c1014257b0831d4ff2db55313c8e363af0434bde5729de7adc641": {
     functionName: "fetchReportsData_createServerFn_handler",
-    importer: () => import("./data-CBfeTu37.mjs")
+    importer: () => import("./data-CEaaFjpA.mjs")
   },
   "7d25a97408bca731433777e4edd9a6c0c38d51dd3b82a40825d7e47b0d1ab33d": {
     functionName: "markNotificationsRead_createServerFn_handler",
-    importer: () => import("./data-CBfeTu37.mjs")
+    importer: () => import("./data-CEaaFjpA.mjs")
   },
   "848dbbe9e3ea97e446d34aaf053c7ed4c1cc74d7b16ee0d41be0232bcee585de": {
     functionName: "linkStudentAccount_createServerFn_handler",
-    importer: () => import("./auth-DDDDXn-O.mjs")
+    importer: () => import("./auth-CNy96bMT.mjs")
   },
   "8b56fb568c5391c221fd012500e983022c9f00c90f326c85d167c6cb77721d48": {
     functionName: "adminEnrollStudent_createServerFn_handler",
-    importer: () => import("./data-CBfeTu37.mjs")
+    importer: () => import("./data-CEaaFjpA.mjs")
   },
   "91c76d7cfaf2705e8949982f7c5b719d5d23f89c19c75d47ef6a1f4fec7ed188": {
     functionName: "adminUpsertStudent_createServerFn_handler",
-    importer: () => import("./data-CBfeTu37.mjs")
+    importer: () => import("./data-CEaaFjpA.mjs")
   },
   "9f11ffa414be66e3006d68b5c10f24ac322e83baf518493bc1f9e7e71d9b2711": {
     functionName: "fetchStudentResults_createServerFn_handler",
-    importer: () => import("./data-CBfeTu37.mjs")
+    importer: () => import("./data-CEaaFjpA.mjs")
   },
   "b5f2635ccbe59e85f45a2bcfcfaadd3f163385450bde1a06bb7d4fc12873cd46": {
     functionName: "fetchTeachersDirectory_createServerFn_handler",
-    importer: () => import("./data-CBfeTu37.mjs")
+    importer: () => import("./data-CEaaFjpA.mjs")
   },
   "b8358eea26f012b12ecee8933899c09ded27475ca2c58b31312693baa932657b": {
     functionName: "adminUpsertTeacher_createServerFn_handler",
-    importer: () => import("./data-CBfeTu37.mjs")
+    importer: () => import("./data-CEaaFjpA.mjs")
   },
   "d7fcca3fe3ac61831f82c7bdd38595963ad8aa6c56e1503dffd38f5ae092ea5e": {
     functionName: "signUp_createServerFn_handler",
-    importer: () => import("./auth-DDDDXn-O.mjs")
+    importer: () => import("./auth-CNy96bMT.mjs")
   },
   "e5d4892a39ae5cc7ab1e55b6203012d23aaed92bc3eac7162d6bcda38547f35b": {
     functionName: "fetchNotifications_createServerFn_handler",
-    importer: () => import("./data-CBfeTu37.mjs")
+    importer: () => import("./data-CEaaFjpA.mjs")
   },
   "ef05a33c8c0fc2d4e14862eeda98aed4fd92a87d5d33de9817a5690efc0afa16": {
     functionName: "adminDeleteStudent_createServerFn_handler",
-    importer: () => import("./data-CBfeTu37.mjs")
+    importer: () => import("./data-CEaaFjpA.mjs")
   },
   "f5c567ac5140e43ba5fcdf825b40cb38ba645dfb2a19ba0595a7807515a44f15": {
     functionName: "getAuthUser_createServerFn_handler",
-    importer: () => import("./auth-DDDDXn-O.mjs")
+    importer: () => import("./auth-CNy96bMT.mjs")
   },
   "f5ce13c4f64582db3c8db64f8792ac6f21b57ba0a7a9fb3c28dff075154ae810": {
     functionName: "adminUnenrollStudent_createServerFn_handler",
-    importer: () => import("./data-CBfeTu37.mjs")
+    importer: () => import("./data-CEaaFjpA.mjs")
   },
   "fb8395712825c4225151658d1832ab5545573c85cb60b7b65ee70536388c4472": {
     functionName: "fetchStudentFees_createServerFn_handler",
-    importer: () => import("./data-CBfeTu37.mjs")
+    importer: () => import("./data-CEaaFjpA.mjs")
   }
 };
 async function getServerFnById(id, access) {

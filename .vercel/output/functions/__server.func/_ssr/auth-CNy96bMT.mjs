@@ -1,6 +1,7 @@
-import { c as createServerRpc, i as isSupabaseServerConfigured, g as getSupabaseServerClient, a as getSupabaseServiceClient } from "./server-fjsKTU91.mjs";
+import { c as createServerRpc, i as isSupabaseServerConfigured, g as getSupabaseServerClient, a as getSupabaseServiceClient } from "./server-DYh3X2_O.mjs";
 import { c as createServerFn } from "./index.mjs";
 import "../_libs/supabase__ssr.mjs";
+import "../_libs/ws.mjs";
 import "../_libs/seroval.mjs";
 import "../_libs/react.mjs";
 import { o as objectType, s as stringType } from "../_libs/zod.mjs";
@@ -30,6 +31,14 @@ import "crypto";
 import "async_hooks";
 import "stream";
 import "../_libs/isbot.mjs";
+import "events";
+import "https";
+import "http";
+import "net";
+import "tls";
+import "url";
+import "zlib";
+import "buffer";
 const signInSchema = objectType({
   email: stringType().email(),
   password: stringType().min(6)
@@ -49,37 +58,42 @@ function resolveUserRole(profileRole, appMetadata) {
 }
 async function fetchAuthUser() {
   if (!isSupabaseServerConfigured()) return null;
-  const supabase = getSupabaseServerClient();
-  const {
-    data: {
-      user
-    },
-    error
-  } = await supabase.auth.getUser();
-  if (error || !user) return null;
-  const {
-    data: profile
-  } = await supabase.from("profiles").select("full_name, role").eq("id", user.id).maybeSingle();
-  const metaFullName = typeof user.user_metadata?.full_name === "string" ? user.user_metadata.full_name : void 0;
-  const role = resolveUserRole(profile?.role, user.app_metadata);
-  const fullName = profile?.full_name ?? metaFullName ?? user.email ?? "User";
-  if (process.env.SUPABASE_SERVICE_ROLE_KEY && (!profile || profile.role !== role || profile.full_name !== fullName)) {
-    try {
-      await getSupabaseServiceClient().from("profiles").upsert({
-        id: user.id,
-        full_name: fullName,
-        role
-      });
-    } catch (syncError) {
-      console.error("Profile sync failed:", syncError);
+  try {
+    const supabase = getSupabaseServerClient();
+    const {
+      data: {
+        user
+      },
+      error
+    } = await supabase.auth.getUser();
+    if (error || !user) return null;
+    const {
+      data: profile
+    } = await supabase.from("profiles").select("full_name, role").eq("id", user.id).maybeSingle();
+    const metaFullName = typeof user.user_metadata?.full_name === "string" ? user.user_metadata.full_name : void 0;
+    const role = resolveUserRole(profile?.role, user.app_metadata);
+    const fullName = profile?.full_name ?? metaFullName ?? user.email ?? "User";
+    if (process.env.SUPABASE_SERVICE_ROLE_KEY && (!profile || profile.role !== role || profile.full_name !== fullName)) {
+      try {
+        await getSupabaseServiceClient().from("profiles").upsert({
+          id: user.id,
+          full_name: fullName,
+          role
+        });
+      } catch (syncError) {
+        console.error("Profile sync failed:", syncError);
+      }
     }
+    return {
+      id: user.id,
+      email: user.email ?? "",
+      fullName,
+      role
+    };
+  } catch (error) {
+    console.error("Auth lookup failed:", error);
+    return null;
   }
-  return {
-    id: user.id,
-    email: user.email ?? "",
-    fullName,
-    role
-  };
 }
 const getAuthUser_createServerFn_handler = createServerRpc({
   id: "f5c567ac5140e43ba5fcdf825b40cb38ba645dfb2a19ba0595a7807515a44f15",

@@ -1,4 +1,4 @@
-import { useRouterState } from "@tanstack/react-router";
+import { useRouterState, useRouter } from "@tanstack/react-router";
 import {
   LayoutDashboard,
   BookOpen,
@@ -18,22 +18,49 @@ import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { APP_LOGO_SHORT, APP_NAME, APP_TAGLINE } from "@/lib/brand";
+import type { UserRole } from "@/lib/auth-types";
+import { useAuthUser } from "@/hooks/use-auth";
+import { signOut } from "@/lib/supabase/auth";
+import { toast } from "sonner";
 
-const nav = [
-  { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { to: "/courses", label: "My Courses", icon: BookOpen },
-  { to: "/attendance", label: "Attendance", icon: CalendarCheck2 },
-  { to: "/fees", label: "Fee Management", icon: Wallet },
-  { to: "/teachers", label: "Teachers", icon: Users },
-  { to: "/results", label: "Results", icon: GraduationCap },
-  { to: "/reports", label: "Reports", icon: BarChart3 },
-  { to: "/admin", label: "Admin Panel", icon: ShieldCheck },
-  { to: "/notifications", label: "Notifications", icon: Bell },
-  { to: "/settings", label: "Settings", icon: Settings },
+const nav: { to: string; label: string; icon: typeof LayoutDashboard; roles: UserRole[] }[] = [
+  { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard, roles: ["student", "teacher", "admin"] },
+  { to: "/courses", label: "My Courses", icon: BookOpen, roles: ["student", "teacher", "admin"] },
+  { to: "/attendance", label: "Attendance", icon: CalendarCheck2, roles: ["student", "teacher", "admin"] },
+  { to: "/fees", label: "Fee Management", icon: Wallet, roles: ["student", "admin"] },
+  { to: "/teachers", label: "Teachers", icon: Users, roles: ["student", "teacher", "admin"] },
+  { to: "/results", label: "Results", icon: GraduationCap, roles: ["student", "teacher", "admin"] },
+  { to: "/reports", label: "Reports", icon: BarChart3, roles: ["teacher", "admin"] },
+  { to: "/admin", label: "Admin Panel", icon: ShieldCheck, roles: ["admin"] },
+  { to: "/notifications", label: "Notifications", icon: Bell, roles: ["student", "teacher", "admin"] },
+  { to: "/settings", label: "Settings", icon: Settings, roles: ["student", "teacher", "admin"] },
 ];
 
 export function AppLayout({ children, title, subtitle }: { children: React.ReactNode; title: string; subtitle?: string }) {
   const path = useRouterState({ select: (s) => s.location.pathname });
+  const router = useRouter();
+  const authUser = useAuthUser();
+  const initials = authUser?.fullName
+    ?.split(" ")
+    .map((part) => part[0])
+    .join("")
+    .slice(0, 2)
+    .toUpperCase() ?? "?";
+
+  const visibleNav = nav.filter((item) =>
+    authUser ? item.roles.includes(authUser.role) : true,
+  );
+
+  async function handleLogout() {
+    try {
+      await signOut();
+      await router.invalidate();
+      await router.navigate({ to: "/login" });
+    } catch {
+      toast.error("Could not sign out");
+    }
+  }
+
   return (
     <div className="min-h-screen bg-background flex">
       <aside className="hidden lg:flex w-64 shrink-0 flex-col bg-sidebar text-sidebar-foreground sticky top-0 h-screen">
@@ -47,7 +74,7 @@ export function AppLayout({ children, title, subtitle }: { children: React.React
           </div>
         </div>
         <nav className="flex-1 overflow-y-auto py-4 px-3 space-y-0.5 text-sm">
-          {nav.map((item) => {
+          {visibleNav.map((item) => {
             const active = path === item.to;
             const Icon = item.icon;
             return (
@@ -68,12 +95,13 @@ export function AppLayout({ children, title, subtitle }: { children: React.React
           })}
         </nav>
         <div className="p-3 border-t border-sidebar-border">
-          <a
-            href="/login"
-            className="flex items-center gap-3 rounded-md px-3 py-2 text-sm text-sidebar-foreground/80 hover:bg-sidebar-accent/60"
+          <button
+            type="button"
+            onClick={handleLogout}
+            className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm text-sidebar-foreground/80 hover:bg-sidebar-accent/60"
           >
             <LogOut className="size-4" /> Logout
-          </a>
+          </button>
         </div>
       </aside>
 
@@ -89,11 +117,13 @@ export function AppLayout({ children, title, subtitle }: { children: React.React
           </button>
           <div className="hidden sm:flex items-center gap-3 pl-3 border-l">
             <Avatar className="size-9">
-              <AvatarFallback className="bg-primary text-primary-foreground text-xs font-semibold">A</AvatarFallback>
+              <AvatarFallback className="bg-primary text-primary-foreground text-xs font-semibold">
+                {initials}
+              </AvatarFallback>
             </Avatar>
             <div className="leading-tight">
-              <div className="text-sm font-medium">Admin</div>
-              <div className="text-xs text-muted-foreground">{APP_TAGLINE}</div>
+              <div className="text-sm font-medium">{authUser?.fullName ?? "User"}</div>
+              <div className="text-xs text-muted-foreground capitalize">{authUser?.role ?? APP_TAGLINE}</div>
             </div>
           </div>
         </header>

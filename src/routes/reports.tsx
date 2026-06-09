@@ -6,8 +6,9 @@ import {
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
 } from "recharts";
 import { pageHead } from "@/lib/seo";
+import { requireAuth } from "@/lib/auth-guards";
 
-export const Route = createFileRoute("/reports")({ head: () => pageHead("Reports"), component: Reports });
+export const Route = createFileRoute("/reports")({ head: () => pageHead("Reports"), beforeLoad: ({ context }) => { requireAuth(context.authUser); }, component: Reports });
 
 const enroll = [
   { y: "2021", s: 3200 }, { y: "2022", s: 3680 }, { y: "2023", s: 4120 },

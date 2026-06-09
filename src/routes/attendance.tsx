@@ -5,8 +5,9 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { AlertTriangle } from "lucide-react";
 import { pageHead } from "@/lib/seo";
+import { requireAuth } from "@/lib/auth-guards";
 
-export const Route = createFileRoute("/attendance")({ head: () => pageHead("Attendance"), component: Attendance });
+export const Route = createFileRoute("/attendance")({ head: () => pageHead("Attendance"), beforeLoad: ({ context }) => { requireAuth(context.authUser); }, component: Attendance });
 
 const rows = [
   { course: "Database Systems", code: "CS-304", att: 82, classes: 28, attended: 23 },

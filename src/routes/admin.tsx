@@ -14,8 +14,9 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@
 import { toast } from "sonner";
 import { Plus, Search, Pencil, Trash2, Users, GraduationCap, BookOpen, Wallet } from "lucide-react";
 import { pageHead } from "@/lib/seo";
+import { requireAdmin } from "@/lib/auth-guards";
 
-export const Route = createFileRoute("/admin")({ head: () => pageHead("Admin"), component: Admin });
+export const Route = createFileRoute("/admin")({ head: () => pageHead("Admin"), beforeLoad: ({ context }) => { requireAdmin(context.authUser); }, component: Admin });
 
 type Student = { id: string; name: string; dept: string; sem: number; fee: string; status: string };
 

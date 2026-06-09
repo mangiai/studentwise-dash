@@ -10,6 +10,9 @@ import {
 
 import appCss from "../styles.css?url";
 import { appHead } from "@/lib/seo";
+import type { AuthUser } from "@/lib/auth-types";
+import { getAuthUser } from "@/lib/supabase/auth";
+import { Toaster } from "@/components/ui/sonner";
 
 function NotFoundComponent() {
   return (
@@ -68,7 +71,14 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
   );
 }
 
-export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
+export const Route = createRootRouteWithContext<{
+  queryClient: QueryClient;
+  authUser: AuthUser | null;
+}>()({
+  beforeLoad: async () => {
+    const authUser = await getAuthUser();
+    return { authUser };
+  },
   head: () => {
     const seo = appHead();
     return {
@@ -121,6 +131,7 @@ function RootComponent() {
   return (
     <QueryClientProvider client={queryClient}>
       <Outlet />
+      <Toaster richColors position="top-right" />
     </QueryClientProvider>
   );
 }

@@ -17,6 +17,7 @@ import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
+import { APP_LOGO_SHORT, APP_NAME, APP_TAGLINE } from "@/lib/brand";
 
 const nav = [
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -37,10 +38,12 @@ export function AppLayout({ children, title, subtitle }: { children: React.React
     <div className="min-h-screen bg-background flex">
       <aside className="hidden lg:flex w-64 shrink-0 flex-col bg-sidebar text-sidebar-foreground sticky top-0 h-screen">
         <div className="px-6 h-16 flex items-center gap-2 border-b border-sidebar-border">
-          <div className="size-9 rounded-lg bg-sidebar-primary flex items-center justify-center text-sidebar-primary-foreground font-bold text-sm">IU</div>
+          <div className="size-9 rounded-lg bg-sidebar-primary flex items-center justify-center text-sidebar-primary-foreground font-bold text-sm">
+            {APP_LOGO_SHORT}
+          </div>
           <div className="leading-tight">
-            <div className="font-semibold tracking-tight">Iqra University</div>
-            <div className="text-[11px] opacity-70">University Portal</div>
+            <div className="font-semibold tracking-tight">{APP_NAME}</div>
+            <div className="text-[11px] opacity-70">{APP_TAGLINE}</div>
           </div>
         </div>
         <nav className="flex-1 overflow-y-auto py-4 px-3 space-y-0.5 text-sm">
@@ -90,7 +93,7 @@ export function AppLayout({ children, title, subtitle }: { children: React.React
             </Avatar>
             <div className="leading-tight">
               <div className="text-sm font-medium">Admin</div>
-              <div className="text-xs text-muted-foreground">University Portal</div>
+              <div className="text-xs text-muted-foreground">{APP_TAGLINE}</div>
             </div>
           </div>
         </header>

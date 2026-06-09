@@ -4,6 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { GraduationCap, BookOpen, Users, ShieldCheck } from "lucide-react";
+import { APP_COPYRIGHT, APP_NAME, APP_TAGLINE } from "@/lib/brand";
 
 export const Route = createFileRoute("/login")({
   component: Login,
@@ -17,8 +18,8 @@ function Login() {
         <div className="relative flex items-center gap-3">
           <div className="size-10 rounded-xl bg-sidebar-primary grid place-content-center text-sidebar-primary-foreground"><GraduationCap className="size-5" /></div>
           <div>
-            <div className="font-semibold text-lg">Iqra University</div>
-            <div className="text-xs opacity-70">University Portal</div>
+            <div className="font-semibold text-lg">{APP_NAME}</div>
+            <div className="text-xs opacity-70">{APP_TAGLINE}</div>
           </div>
         </div>
 
@@ -39,14 +40,14 @@ function Login() {
           </div>
         </div>
 
-        <div className="relative text-xs opacity-60">© 2026 UniManage. All rights reserved.</div>
+        <div className="relative text-xs opacity-60">{APP_COPYRIGHT}</div>
       </div>
 
       <div className="flex items-center justify-center p-6 lg:p-12">
         <div className="w-full max-w-md">
           <div className="lg:hidden mb-8 flex items-center gap-3">
             <div className="size-10 rounded-xl bg-primary grid place-content-center text-primary-foreground"><GraduationCap className="size-5" /></div>
-            <span className="font-semibold text-lg">Iqra University</span>
+            <span className="font-semibold text-lg">{APP_NAME}</span>
           </div>
           <h1 className="text-2xl font-semibold tracking-tight">Welcome back</h1>
           <p className="text-sm text-muted-foreground mt-1">Sign in to your student account to continue.</p>

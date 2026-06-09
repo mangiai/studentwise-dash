@@ -5,6 +5,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { GraduationCap } from "lucide-react";
+import { APP_NAME } from "@/lib/brand";
 
 export const Route = createFileRoute("/signup")({
   component: Signup,
@@ -17,7 +18,7 @@ function Signup() {
         <div className="text-center mb-6">
           <div className="inline-flex items-center gap-3 mb-4">
             <div className="size-10 rounded-xl bg-primary grid place-content-center text-primary-foreground"><GraduationCap className="size-5" /></div>
-            <span className="font-semibold text-lg">Iqra University</span>
+            <span className="font-semibold text-lg">{APP_NAME}</span>
           </div>
           <h1 className="text-2xl font-semibold tracking-tight">Create your student account</h1>
           <p className="text-sm text-muted-foreground mt-1">Get started in minutes — manage your academic life with ease.</p>

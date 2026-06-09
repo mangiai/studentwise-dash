@@ -1,6 +1,6 @@
 # StudentWise Dash
 
-University portal dashboard for Iqra University — built with TanStack Start, deployed on Vercel, backed by Supabase Postgres.
+University portal dashboard built with TanStack Start, deployed on Vercel, backed by Supabase Postgres.
 
 ## Stack
 

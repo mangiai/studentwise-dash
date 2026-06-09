@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { AdminLayout } from "@/components/AdminLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -25,45 +25,41 @@ import { toast } from "sonner";
 import { Plus, Search, Pencil, Trash2, Users, GraduationCap, BookOpen, Wallet } from "lucide-react";
 import { pageHead } from "@/lib/seo";
 import { requireAdmin } from "@/lib/auth-guards";
+import {
+  fetchAdminData,
+  fetchDepartments,
+  adminUpsertStudent,
+  adminDeleteStudent,
+  adminUpsertTeacher,
+  adminDeleteTeacher,
+  adminUpsertCourse,
+  adminDeleteCourse,
+  adminEnrollStudent,
+  adminUnenrollStudent,
+  adminAssignInstructor,
+} from "@/lib/supabase/data";
 
 export const Route = createFileRoute("/admin/dashboard")({
   head: () => pageHead("Admin Dashboard"),
   beforeLoad: ({ context }) => {
     requireAdmin(context.authUser);
   },
+  loader: async () => {
+    const [adminData, deptData] = await Promise.all([fetchAdminData(), fetchDepartments()]);
+    return {
+      ...adminData,
+      departments: deptData.departments.map((d) => d.name),
+    };
+  },
   component: Admin,
 });
 
 type Student = { id: string; name: string; dept: string; sem: number; fee: string; status: string };
 type Teacher = { id: string; name: string; dept: string; courses: number; status: string };
-type Course = { id: string; name: string; credits: number; instructor: string; enrolledIds: string[] };
+type Course = { id: string; name: string; credits: number; instructor: string; instructorId?: string | null; enrolledIds: string[] };
 type DeleteTarget = { kind: "student" | "teacher" | "course"; id: string; name: string };
 
-const DEPARTMENTS = ["Computer Science", "Electrical Eng.", "Business Admin.", "Mathematics"] as const;
 const selectContentClass = "z-[200]";
-
-const initialStudents: Student[] = [
-  { id: "2026-BSCS-0042", name: "Sarah Ahmed", dept: "Computer Science", sem: 7, fee: "Paid", status: "Active" },
-  { id: "2026-BSCS-0043", name: "Hassan Raza", dept: "Computer Science", sem: 7, fee: "Pending", status: "Active" },
-  { id: "2025-BSEE-0118", name: "Maryam Khan", dept: "Electrical Eng.", sem: 5, fee: "Paid", status: "Active" },
-  { id: "2024-BBA-0204", name: "Usman Tariq", dept: "Business Admin.", sem: 3, fee: "Overdue", status: "Hold" },
-  { id: "2026-MATH-0019", name: "Ayesha Malik", dept: "Mathematics", sem: 1, fee: "Paid", status: "Active" },
-  { id: "2025-BSCS-0091", name: "Bilal Yousaf", dept: "Computer Science", sem: 3, fee: "Paid", status: "Active" },
-];
-
-const initialTeachers: Teacher[] = [
-  { id: "FAC-2018-014", name: "Dr. Aamir Khan", dept: "Computer Science", courses: 3, status: "Active" },
-  { id: "FAC-2015-008", name: "Prof. Sana Ali", dept: "Computer Science", courses: 2, status: "Active" },
-  { id: "FAC-2020-031", name: "Dr. Hamza Saeed", dept: "Computer Science", courses: 4, status: "Active" },
-  { id: "FAC-2017-022", name: "Dr. Maria Iqbal", dept: "Computer Science", courses: 2, status: "On Leave" },
-];
-
-const initialCourses: Course[] = [
-  { id: "CS-301", name: "Database Systems", credits: 3, instructor: "Dr. Aamir Khan", enrolledIds: ["2026-BSCS-0042", "2026-BSCS-0043"] },
-  { id: "CS-302", name: "Operating Systems", credits: 3, instructor: "Prof. Sana Ali", enrolledIds: ["2026-BSCS-0042"] },
-  { id: "CS-401", name: "Software Engineering", credits: 3, instructor: "Dr. Hamza Saeed", enrolledIds: ["2025-BSEE-0118"] },
-  { id: "CS-402", name: "Computer Networks", credits: 3, instructor: "Dr. Maria Iqbal", enrolledIds: [] },
-];
 
 const emptyStudentForm = {
   id: "",
@@ -87,7 +83,7 @@ const emptyCourseForm = {
   id: "",
   name: "",
   credits: "3",
-  instructor: "",
+  instructor: "none",
 };
 
 function statusBadge(s: string) {
@@ -107,9 +103,14 @@ function matchesSearch(value: string, query: string) {
 }
 
 function Admin() {
-  const [students, setStudents] = useState<Student[]>(initialStudents);
-  const [teachers, setTeachers] = useState<Teacher[]>(initialTeachers);
-  const [courses, setCourses] = useState<Course[]>(initialCourses);
+  const router = useRouter();
+  const loaderData = Route.useLoaderData();
+  const students = loaderData.students as Student[];
+  const teachers = loaderData.teachers as Teacher[];
+  const courses = loaderData.courses as Course[];
+  const departments = loaderData.departments.length > 0
+    ? loaderData.departments
+    : ["Computer Science", "Electrical Engineering", "Business Administration", "Mathematics"];
 
   const [studentSearch, setStudentSearch] = useState("");
   const [teacherSearch, setTeacherSearch] = useState("");
@@ -205,45 +206,38 @@ function Admin() {
     setStudentOpen(true);
   }
 
-  function saveStudent() {
+  async function saveStudent() {
     if (!studentForm.id.trim() || !studentForm.name.trim()) {
       toast.error("Please enter student name and ID");
       return;
     }
 
-    const payload: Student = {
-      id: studentForm.id.trim(),
-      name: studentForm.name.trim(),
-      dept: studentForm.dept,
-      sem: Number(studentForm.sem) || 1,
-      fee: studentForm.fee,
-      status: studentForm.status,
-    };
+    try {
+      await adminUpsertStudent({
+        data: {
+          id: studentForm.id.trim(),
+          name: studentForm.name.trim(),
+          dept: studentForm.dept,
+          sem: Number(studentForm.sem) || 1,
+          fee: studentForm.fee as "Paid" | "Pending" | "Overdue",
+          status: studentForm.status as "Active" | "Hold" | "On Leave",
+        },
+      });
 
-    if (editingStudentId) {
-      setStudents((prev) => prev.map((s) => (s.id === editingStudentId ? payload : s)));
-      toast.success("Student updated");
-    } else {
-      if (students.some((s) => s.id === payload.id)) {
-        toast.error("A student with this ID already exists");
-        return;
+      if (!editingStudentId && studentForm.courseId && studentForm.courseId !== "none") {
+        await adminEnrollStudent({
+          data: { courseId: studentForm.courseId, studentId: studentForm.id.trim() },
+        });
       }
-      setStudents((prev) => [payload, ...prev]);
-      if (studentForm.courseId && studentForm.courseId !== "none") {
-        setCourses((prev) =>
-          prev.map((c) =>
-            c.id === studentForm.courseId && !c.enrolledIds.includes(payload.id)
-              ? { ...c, enrolledIds: [...c.enrolledIds, payload.id] }
-              : c,
-          ),
-        );
-      }
-      toast.success("Student added");
+
+      toast.success(editingStudentId ? "Student updated" : "Student added");
+      setStudentOpen(false);
+      setEditingStudentId(null);
+      setStudentForm(emptyStudentForm);
+      await router.invalidate();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not save student");
     }
-
-    setStudentOpen(false);
-    setEditingStudentId(null);
-    setStudentForm(emptyStudentForm);
   }
 
   function openTeacherDialog(teacher?: Teacher) {
@@ -263,41 +257,30 @@ function Admin() {
     setTeacherOpen(true);
   }
 
-  function saveTeacher() {
+  async function saveTeacher() {
     if (!teacherForm.id.trim() || !teacherForm.name.trim()) {
       toast.error("Please enter teacher name and employee ID");
       return;
     }
 
-    const payload: Teacher = {
-      id: teacherForm.id.trim(),
-      name: teacherForm.name.trim(),
-      dept: teacherForm.dept,
-      courses: Number(teacherForm.courses) || 1,
-      status: teacherForm.status,
-    };
-
-    if (editingTeacherId) {
-      const oldName = teachers.find((t) => t.id === editingTeacherId)?.name;
-      setTeachers((prev) => prev.map((t) => (t.id === editingTeacherId ? payload : t)));
-      if (oldName && oldName !== payload.name) {
-        setCourses((prev) =>
-          prev.map((c) => (c.instructor === oldName ? { ...c, instructor: payload.name } : c)),
-        );
-      }
-      toast.success("Teacher updated");
-    } else {
-      if (teachers.some((t) => t.id === payload.id)) {
-        toast.error("A teacher with this ID already exists");
-        return;
-      }
-      setTeachers((prev) => [payload, ...prev]);
-      toast.success("Teacher added");
+    try {
+      await adminUpsertTeacher({
+        data: {
+          id: teacherForm.id.trim(),
+          name: teacherForm.name.trim(),
+          dept: teacherForm.dept,
+          courses: Number(teacherForm.courses) || 1,
+          status: teacherForm.status as "Active" | "Hold" | "On Leave",
+        },
+      });
+      toast.success(editingTeacherId ? "Teacher updated" : "Teacher added");
+      setTeacherOpen(false);
+      setEditingTeacherId(null);
+      setTeacherForm(emptyTeacherForm);
+      await router.invalidate();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not save teacher");
     }
-
-    setTeacherOpen(false);
-    setEditingTeacherId(null);
-    setTeacherForm(emptyTeacherForm);
   }
 
   function openCourseDialog(course?: Course) {
@@ -307,7 +290,7 @@ function Admin() {
         id: course.id,
         name: course.name,
         credits: String(course.credits),
-        instructor: course.instructor,
+        instructor: course.instructorId ?? "none",
       });
     } else {
       setEditingCourseId(null);
@@ -316,119 +299,91 @@ function Admin() {
     setCourseOpen(true);
   }
 
-  function saveCourse() {
+  async function saveCourse() {
     if (!courseForm.id.trim() || !courseForm.name.trim()) {
       toast.error("Please enter course code and name");
       return;
     }
 
-    const payload: Course = {
-      id: courseForm.id.trim(),
-      name: courseForm.name.trim(),
-      credits: Number(courseForm.credits) || 3,
-      instructor: courseForm.instructor.trim() || "TBA",
-      enrolledIds: editingCourseId
-        ? courses.find((c) => c.id === editingCourseId)?.enrolledIds ?? []
-        : [],
-    };
-
-    if (editingCourseId) {
-      setCourses((prev) => prev.map((c) => (c.id === editingCourseId ? payload : c)));
-      toast.success("Course updated");
-    } else {
-      if (courses.some((c) => c.id === payload.id)) {
-        toast.error("A course with this code already exists");
-        return;
-      }
-      setCourses((prev) => [payload, ...prev]);
-      toast.success("Course added");
+    try {
+      await adminUpsertCourse({
+        data: {
+          id: courseForm.id.trim(),
+          name: courseForm.name.trim(),
+          credits: Number(courseForm.credits) || 3,
+          instructorId: courseForm.instructor && courseForm.instructor !== "none" ? courseForm.instructor : null,
+        },
+      });
+      toast.success(editingCourseId ? "Course updated" : "Course added");
+      setCourseOpen(false);
+      setEditingCourseId(null);
+      setCourseForm(emptyCourseForm);
+      await router.invalidate();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not save course");
     }
-
-    setCourseOpen(false);
-    setEditingCourseId(null);
-    setCourseForm(emptyCourseForm);
   }
 
-  function enrollStudentInCourse(courseId: string, studentId: string) {
+  async function enrollStudentInCourse(courseId: string, studentId: string) {
     if (!studentId) return;
-    setCourses((prev) =>
-      prev.map((c) =>
-        c.id === courseId && !c.enrolledIds.includes(studentId)
-          ? { ...c, enrolledIds: [...c.enrolledIds, studentId] }
-          : c,
-      ),
-    );
-    toast.success("Student enrolled");
-    setEnrollSelect("");
+    try {
+      await adminEnrollStudent({ data: { courseId, studentId } });
+      toast.success("Student enrolled");
+      setEnrollSelect("");
+      await router.invalidate();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Enrollment failed");
+    }
   }
 
-  function unenrollStudent(courseId: string, studentId: string) {
-    setCourses((prev) =>
-      prev.map((c) =>
-        c.id === courseId ? { ...c, enrolledIds: c.enrolledIds.filter((id) => id !== studentId) } : c,
-      ),
-    );
-    toast.success("Student removed from course");
+  async function unenrollStudent(courseId: string, studentId: string) {
+    try {
+      await adminUnenrollStudent({ data: { courseId, studentId } });
+      toast.success("Student removed from course");
+      await router.invalidate();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not unenroll");
+    }
   }
 
-  function assignCourseToTeacher() {
+  async function assignCourseToTeacher() {
     if (!assignTeacherId || !assignCourseSelect) {
       toast.error("Select a course to assign");
       return;
     }
 
-    const teacher = teachers.find((t) => t.id === assignTeacherId);
-    const course = courses.find((c) => c.id === assignCourseSelect);
-    if (!teacher || !course) return;
-
-    const wasAlreadyInstructor = course.instructor === teacher.name;
-
-    setCourses((prev) =>
-      prev.map((c) => (c.id === assignCourseSelect ? { ...c, instructor: teacher.name } : c)),
-    );
-
-    if (!wasAlreadyInstructor) {
-      setTeachers((prev) =>
-        prev.map((t) => (t.id === assignTeacherId ? { ...t, courses: t.courses + 1 } : t)),
-      );
+    try {
+      await adminAssignInstructor({
+        data: { courseId: assignCourseSelect, teacherId: assignTeacherId },
+      });
+      const course = courses.find((c) => c.id === assignCourseSelect);
+      const teacher = teachers.find((t) => t.id === assignTeacherId);
+      toast.success(`${course?.name ?? "Course"} assigned to ${teacher?.name ?? "teacher"}`);
+      setAssignTeacherId(null);
+      setAssignCourseSelect("");
+      await router.invalidate();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Assignment failed");
     }
-
-    toast.success(`${course.name} assigned to ${teacher.name}`);
-    setAssignTeacherId(null);
-    setAssignCourseSelect("");
   }
 
-  function confirmDelete() {
+  async function confirmDelete() {
     if (!deleteTarget) return;
 
-    if (deleteTarget.kind === "student") {
-      setStudents((prev) => prev.filter((s) => s.id !== deleteTarget.id));
-      setCourses((prev) =>
-        prev.map((c) => ({
-          ...c,
-          enrolledIds: c.enrolledIds.filter((id) => id !== deleteTarget.id),
-        })),
-      );
-      toast.success("Student deleted");
-    }
-
-    if (deleteTarget.kind === "teacher") {
-      const teacher = teachers.find((t) => t.id === deleteTarget.id);
-      setTeachers((prev) => prev.filter((t) => t.id !== deleteTarget.id));
-      if (teacher) {
-        setCourses((prev) =>
-          prev.map((c) => (c.instructor === teacher.name ? { ...c, instructor: "TBA" } : c)),
-        );
+    try {
+      if (deleteTarget.kind === "student") {
+        await adminDeleteStudent({ data: { id: deleteTarget.id } });
+      } else if (deleteTarget.kind === "teacher") {
+        await adminDeleteTeacher({ data: { id: deleteTarget.id } });
+      } else {
+        await adminDeleteCourse({ data: { id: deleteTarget.id } });
       }
-      toast.success("Teacher deleted");
+      toast.success(`${deleteTarget.name} deleted`);
+      setDeleteTarget(null);
+      await router.invalidate();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Delete failed");
     }
-
-    if (deleteTarget.kind === "course") {
-      setCourses((prev) => prev.filter((c) => c.id !== deleteTarget.id));
-      toast.success("Course deleted");
-    }
-
-    setDeleteTarget(null);
   }
 
   return (
@@ -725,7 +680,7 @@ function Admin() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent className={selectContentClass}>
-                    {DEPARTMENTS.map((d) => (
+                    {departments.map((d) => (
                       <SelectItem key={d} value={d}>
                         {d}
                       </SelectItem>
@@ -851,7 +806,7 @@ function Admin() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent className={selectContentClass}>
-                    {DEPARTMENTS.map((d) => (
+                    {departments.map((d) => (
                       <SelectItem key={d} value={d}>
                         {d}
                       </SelectItem>
@@ -949,7 +904,7 @@ function Admin() {
                 <Label>Instructor</Label>
                 <Select
                   value={courseForm.instructor || "none"}
-                  onValueChange={(v) => setCourseForm({ ...courseForm, instructor: v === "none" ? "" : v })}
+                  onValueChange={(v) => setCourseForm({ ...courseForm, instructor: v })}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Select instructor" />
@@ -957,7 +912,7 @@ function Admin() {
                   <SelectContent className={selectContentClass}>
                     <SelectItem value="none">Unassigned</SelectItem>
                     {teachers.map((t) => (
-                      <SelectItem key={t.id} value={t.name}>
+                      <SelectItem key={t.id} value={t.id}>
                         {t.name}
                       </SelectItem>
                     ))}

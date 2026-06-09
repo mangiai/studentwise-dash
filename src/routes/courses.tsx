@@ -9,17 +9,16 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { AlertTriangle, BookOpen, ChevronRight } from "lucide-react";
 import { pageHead } from "@/lib/seo";
 import { requireAuth } from "@/lib/auth-guards";
+import { fetchStudentCourses } from "@/lib/supabase/data";
 
-export const Route = createFileRoute("/courses")({ head: () => pageHead("Courses"), beforeLoad: ({ context }) => { requireAuth(context.authUser); }, component: Courses });
-
-const courses = [
-  { name: "Database Systems", code: "CS-304", teacher: "Dr. Aamir Khan", credits: 3, att: 82, status: "Ongoing" },
-  { name: "Operating Systems", code: "CS-307", teacher: "Prof. Sana Ali", credits: 3, att: 68, status: "Ongoing" },
-  { name: "Software Engineering", code: "CS-401", teacher: "Dr. Hamza Saeed", credits: 4, att: 91, status: "Ongoing" },
-  { name: "Computer Networks", code: "CS-403", teacher: "Dr. Maria Iqbal", credits: 3, att: 74, status: "Ongoing" },
-  { name: "Artificial Intelligence", code: "CS-411", teacher: "Dr. Bilal Tariq", credits: 3, att: 88, status: "Ongoing" },
-  { name: "Discrete Mathematics", code: "MATH-204", teacher: "Prof. Nida Rauf", credits: 3, att: 65, status: "Ongoing" },
-];
+export const Route = createFileRoute("/courses")({
+  head: () => pageHead("Courses"),
+  beforeLoad: ({ context }) => {
+    requireAuth(context.authUser);
+  },
+  loader: () => fetchStudentCourses(),
+  component: Courses,
+});
 
 function attBadge(att: number) {
   if (att < 75) return <Badge className="bg-destructive/15 text-destructive hover:bg-destructive/15 border-0"><AlertTriangle className="size-3 mr-1" />Short Attendance</Badge>;
@@ -28,8 +27,15 @@ function attBadge(att: number) {
 }
 
 function Courses() {
+  const { configured, courses } = Route.useLoaderData();
+  const credits = courses.reduce((a, c) => a + c.credits, 0);
+
   return (
-    <AppLayout title="Enrolled Courses" subtitle="6 active courses · 19 credit hours this semester">
+    <AppLayout title="Enrolled Courses" subtitle={`${courses.length} active courses · ${credits} credit hours this semester`}>
+      {!configured && <p className="text-sm text-muted-foreground mb-4">Supabase not configured.</p>}
+      {courses.length === 0 && (
+        <p className="text-sm text-muted-foreground">No courses enrolled for Spring 2026.</p>
+      )}
       <Tabs defaultValue="cards" className="w-full">
         <TabsList>
           <TabsTrigger value="cards">Card View</TabsTrigger>
@@ -50,12 +56,10 @@ function Courses() {
                     </div>
                     <div className="size-10 rounded-lg bg-primary/10 text-primary grid place-content-center"><BookOpen className="size-5" /></div>
                   </div>
-
                   <div className="flex items-center gap-3 text-xs">
                     <Badge variant="outline">{c.credits} credits</Badge>
                     {attBadge(c.att)}
                   </div>
-
                   <div>
                     <div className="flex items-center justify-between text-xs mb-1.5">
                       <span className="text-muted-foreground">Attendance</span>
@@ -63,7 +67,6 @@ function Courses() {
                     </div>
                     <Progress value={c.att} className={`h-2 ${c.att < 75 ? "[&>div]:bg-destructive" : ""}`} />
                   </div>
-
                   <Button variant="outline" className="w-full" size="sm">
                     View Details <ChevronRight className="size-3" />
                   </Button>
@@ -85,7 +88,6 @@ function Courses() {
                     <TableHead className="text-center">Credits</TableHead>
                     <TableHead>Attendance</TableHead>
                     <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Action</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -102,7 +104,6 @@ function Courses() {
                         </div>
                       </TableCell>
                       <TableCell>{attBadge(c.att)}</TableCell>
-                      <TableCell className="text-right"><Button size="sm" variant="ghost">View</Button></TableCell>
                     </TableRow>
                   ))}
                 </TableBody>

@@ -7,32 +7,32 @@ import {
 } from "recharts";
 import { pageHead } from "@/lib/seo";
 import { requireAuth } from "@/lib/auth-guards";
+import { fetchReportsData } from "@/lib/supabase/data";
 
-export const Route = createFileRoute("/reports")({ head: () => pageHead("Reports"), beforeLoad: ({ context }) => { requireAuth(context.authUser); }, component: Reports });
-
-const enroll = [
-  { y: "2021", s: 3200 }, { y: "2022", s: 3680 }, { y: "2023", s: 4120 },
-  { y: "2024", s: 4540 }, { y: "2025", s: 4920 }, { y: "2026", s: 5284 },
-];
-const fees = [
-  { m: "Jan", c: 142 }, { m: "Feb", c: 168 }, { m: "Mar", c: 195 }, { m: "Apr", c: 178 },
-  { m: "May", c: 210 }, { m: "Jun", c: 232 }, { m: "Jul", c: 248 }, { m: "Aug", c: 284 },
-];
-const att = [
-  { d: "Mon", v: 92 }, { d: "Tue", v: 89 }, { d: "Wed", v: 87 },
-  { d: "Thu", v: 91 }, { d: "Fri", v: 78 }, { d: "Sat", v: 84 },
-];
-const dept = [
-  { name: "Computer Science", value: 1820, color: "var(--color-chart-1)" },
-  { name: "Electrical Eng.", value: 1140, color: "var(--color-chart-2)" },
-  { name: "Business Admin.", value: 920, color: "var(--color-chart-3)" },
-  { name: "Mathematics", value: 640, color: "var(--color-chart-4)" },
-  { name: "Other", value: 764, color: "var(--color-chart-5)" },
-];
+export const Route = createFileRoute("/reports")({
+  head: () => pageHead("Reports"),
+  beforeLoad: ({ context }) => {
+    requireAuth(context.authUser);
+  },
+  loader: () => fetchReportsData(),
+  component: Reports,
+});
 
 function Reports() {
+  const { data } = Route.useLoaderData();
+
+  if (!data) {
+    return (
+      <AppLayout title="Reports & Analytics" subtitle="Available to teachers and admins only.">
+        <p className="text-sm text-muted-foreground">No report data available for your role.</p>
+      </AppLayout>
+    );
+  }
+
+  const { enroll, fees, att, dept } = data;
+
   return (
-    <AppLayout title="Reports & Analytics" subtitle="University-wide insights and performance metrics">
+    <AppLayout title="Reports & Analytics" subtitle="University-wide insights from live database">
       <div className="grid gap-4 lg:grid-cols-2">
         <Card>
           <CardHeader><CardTitle className="text-base">Student Enrollment Trend</CardTitle></CardHeader>
@@ -56,7 +56,7 @@ function Reports() {
         </Card>
 
         <Card>
-          <CardHeader><CardTitle className="text-base">Fee Collection</CardTitle></CardHeader>
+          <CardHeader><CardTitle className="text-base">Fee Collection (PKR thousands)</CardTitle></CardHeader>
           <CardContent className="h-72">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={fees} margin={{ left: -10, top: 4 }}>
@@ -90,10 +90,9 @@ function Reports() {
           <CardContent className="h-72">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
-                <Pie data={dept} dataKey="value" innerRadius={60} outerRadius={95} paddingAngle={2}>
+                <Pie data={dept} dataKey="value" innerRadius={48} outerRadius={80} paddingAngle={2}>
                   {dept.map((d) => <Cell key={d.name} fill={d.color} />)}
                 </Pie>
-                <Tooltip contentStyle={{ background: "var(--color-card)", border: "1px solid var(--color-border)", borderRadius: 8 }} />
                 <Legend iconType="circle" wrapperStyle={{ fontSize: 12 }} />
               </PieChart>
             </ResponsiveContainer>

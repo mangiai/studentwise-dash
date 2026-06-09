@@ -262,6 +262,66 @@ export type Database = {
         };
         Relationships: [];
       };
+      course_grades: {
+        Row: {
+          id: string;
+          student_id: string;
+          course_id: string;
+          semester: string;
+          grade: string;
+          grade_points: number;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          student_id: string;
+          course_id: string;
+          semester: string;
+          grade: string;
+          grade_points: number;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          student_id?: string;
+          course_id?: string;
+          semester?: string;
+          grade?: string;
+          grade_points?: number;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      notifications: {
+        Row: {
+          id: string;
+          user_id: string;
+          type: "fee" | "attendance" | "course" | "announcement";
+          title: string;
+          body: string;
+          read: boolean;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          type: "fee" | "attendance" | "course" | "announcement";
+          title: string;
+          body: string;
+          read?: boolean;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          type?: "fee" | "attendance" | "course" | "announcement";
+          title?: string;
+          body?: string;
+          read?: boolean;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
     };
     Views: Record<string, never>;
     Functions: Record<string, never>;

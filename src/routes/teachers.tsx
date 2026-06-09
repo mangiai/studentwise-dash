@@ -4,30 +4,29 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Mail, Phone, BookOpen } from "lucide-react";
+import { BookOpen } from "lucide-react";
 import { pageHead } from "@/lib/seo";
 import { requireAuth } from "@/lib/auth-guards";
+import { fetchTeachersDirectory } from "@/lib/supabase/data";
 
 export const Route = createFileRoute("/teachers")({
   head: () => pageHead("Teachers"),
   beforeLoad: ({ context }) => {
     requireAuth(context.authUser);
   },
+  loader: () => fetchTeachersDirectory(),
   component: Teachers,
 });
 
-const teachers = [
-  { id: "FAC-2018-014", name: "Dr. Aamir Khan", dept: "Computer Science", courses: 3, email: "aamir.khan@university.edu", phone: "+92 300 1112233", status: "Active" },
-  { id: "FAC-2015-008", name: "Prof. Sana Ali", dept: "Computer Science", courses: 2, email: "sana.ali@university.edu", phone: "+92 300 2223344", status: "Active" },
-  { id: "FAC-2020-031", name: "Dr. Hamza Saeed", dept: "Computer Science", courses: 4, email: "hamza.saeed@university.edu", phone: "+92 300 3334455", status: "Active" },
-  { id: "FAC-2017-022", name: "Dr. Maria Iqbal", dept: "Computer Science", courses: 2, email: "maria.iqbal@university.edu", phone: "+92 300 4445566", status: "On Leave" },
-  { id: "FAC-2019-017", name: "Prof. Nida Rauf", dept: "Mathematics", courses: 2, email: "nida.rauf@university.edu", phone: "+92 300 5556677", status: "Active" },
-];
-
 function Teachers() {
+  const { teachers } = Route.useLoaderData();
+
   return (
-    <AppLayout title="Faculty Directory" subtitle="Browse teachers and contact information for your courses">
+    <AppLayout title="Faculty Directory" subtitle="Browse teachers from the live university database">
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        {teachers.length === 0 && (
+          <p className="text-sm text-muted-foreground col-span-full">No teachers in database. Run seed.sql.</p>
+        )}
         {teachers.map((t) => (
           <Card key={t.id}>
             <CardContent className="p-5 space-y-4">
@@ -44,23 +43,11 @@ function Teachers() {
                 </div>
                 <Badge variant={t.status === "Active" ? "secondary" : "outline"}>{t.status}</Badge>
               </div>
-              <div className="space-y-2 text-sm text-muted-foreground">
-                <div className="flex items-center gap-2">
-                  <BookOpen className="size-4 shrink-0" />
-                  {t.courses} active courses
-                </div>
-                <div className="flex items-center gap-2">
-                  <Mail className="size-4 shrink-0" />
-                  {t.email}
-                </div>
-                <div className="flex items-center gap-2">
-                  <Phone className="size-4 shrink-0" />
-                  {t.phone}
-                </div>
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <BookOpen className="size-4 shrink-0" />
+                {t.courses} active courses
               </div>
-              <Button variant="outline" size="sm" className="w-full">
-                View profile
-              </Button>
+              <Button variant="outline" size="sm" className="w-full">View profile</Button>
             </CardContent>
           </Card>
         ))}

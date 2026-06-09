@@ -6,17 +6,16 @@ import { Progress } from "@/components/ui/progress";
 import { AlertTriangle } from "lucide-react";
 import { pageHead } from "@/lib/seo";
 import { requireAuth } from "@/lib/auth-guards";
+import { fetchStudentAttendance } from "@/lib/supabase/data";
 
-export const Route = createFileRoute("/attendance")({ head: () => pageHead("Attendance"), beforeLoad: ({ context }) => { requireAuth(context.authUser); }, component: Attendance });
-
-const rows = [
-  { course: "Database Systems", code: "CS-304", att: 82, classes: 28, attended: 23 },
-  { course: "Operating Systems", code: "CS-307", att: 68, classes: 25, attended: 17 },
-  { course: "Software Engineering", code: "CS-401", att: 91, classes: 22, attended: 20 },
-  { course: "Computer Networks", code: "CS-403", att: 74, classes: 26, attended: 19 },
-  { course: "Artificial Intelligence", code: "CS-411", att: 88, classes: 24, attended: 21 },
-  { course: "Discrete Mathematics", code: "MATH-204", att: 65, classes: 24, attended: 16 },
-];
+export const Route = createFileRoute("/attendance")({
+  head: () => pageHead("Attendance"),
+  beforeLoad: ({ context }) => {
+    requireAuth(context.authUser);
+  },
+  loader: () => fetchStudentAttendance(),
+  component: Attendance,
+});
 
 function Ring({ value }: { value: number }) {
   const stroke = value < 75 ? "var(--color-destructive)" : value < 85 ? "var(--color-chart-4)" : "var(--color-chart-3)";
@@ -34,7 +33,9 @@ function Ring({ value }: { value: number }) {
 }
 
 function Attendance() {
-  const overall = Math.round(rows.reduce((a, r) => a + r.att, 0) / rows.length);
+  const { rows, summary } = Route.useLoaderData();
+  const overall = summary?.overall ?? 0;
+
   return (
     <AppLayout title="Attendance Management" subtitle="Track your attendance across all enrolled courses">
       <div className="grid gap-4 sm:grid-cols-4 mb-6">
@@ -45,11 +46,11 @@ function Attendance() {
         </CardContent></Card>
         <Card><CardContent className="p-5">
           <div className="text-xs text-muted-foreground">Classes Attended</div>
-          <div className="text-2xl font-semibold mt-1">116<span className="text-sm text-muted-foreground font-normal"> / 149</span></div>
+          <div className="text-2xl font-semibold mt-1">{summary?.totalAttended ?? 0}<span className="text-sm text-muted-foreground font-normal"> / {summary?.totalClasses ?? 0}</span></div>
         </CardContent></Card>
         <Card><CardContent className="p-5">
           <div className="text-xs text-muted-foreground">Short Attendance</div>
-          <div className="text-2xl font-semibold mt-1 text-destructive">2 <span className="text-sm font-normal text-muted-foreground">courses</span></div>
+          <div className="text-2xl font-semibold mt-1 text-destructive">{summary?.shortCount ?? 0} <span className="text-sm font-normal text-muted-foreground">courses</span></div>
         </CardContent></Card>
         <Card><CardContent className="p-5">
           <div className="text-xs text-muted-foreground">Min Required</div>
@@ -60,6 +61,7 @@ function Attendance() {
       <Card>
         <CardHeader><CardTitle className="text-base">Course-wise Attendance</CardTitle></CardHeader>
         <CardContent className="grid gap-3">
+          {rows.length === 0 && <p className="text-sm text-muted-foreground">No attendance records found.</p>}
           {rows.map((r) => (
             <div key={r.code} className="flex items-center gap-5 p-4 rounded-lg border bg-card">
               <Ring value={r.att} />

@@ -1,28 +1,23 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { AppLayout } from "@/components/AppLayout";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Bell, CalendarCheck2, Wallet, BookOpen, Megaphone } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 import { pageHead } from "@/lib/seo";
 import { requireAuth } from "@/lib/auth-guards";
+import { fetchNotifications, markNotificationsRead } from "@/lib/supabase/data";
 
 export const Route = createFileRoute("/notifications")({
   head: () => pageHead("Notifications"),
   beforeLoad: ({ context }) => {
     requireAuth(context.authUser);
   },
+  loader: () => fetchNotifications(),
   component: Notifications,
 });
-
-const notifications = [
-  { id: 1, type: "fee", title: "Fee payment reminder", body: "Spring semester fee is due by March 15, 2026.", time: "2 hours ago", read: false },
-  { id: 2, type: "attendance", title: "Short attendance alert", body: "Operating Systems attendance is below 75%.", time: "Yesterday", read: false },
-  { id: 3, type: "course", title: "New assignment posted", body: "Software Engineering — Project milestone 2 is now live.", time: "2 days ago", read: true },
-  { id: 4, type: "announcement", title: "Spring break schedule", body: "Campus will be closed March 20–27 for spring break.", time: "3 days ago", read: true },
-  { id: 5, type: "course", title: "Exam timetable updated", body: "Final exam schedule for CS department has been published.", time: "1 week ago", read: true },
-];
 
 const iconMap = {
   fee: Wallet,
@@ -32,19 +27,36 @@ const iconMap = {
 };
 
 function Notifications() {
+  const router = useRouter();
+  const { notifications } = Route.useLoaderData();
   const unread = notifications.filter((n) => !n.read).length;
+
+  async function handleMarkAllRead() {
+    try {
+      await markNotificationsRead();
+      toast.success("All notifications marked as read");
+      await router.invalidate();
+    } catch {
+      toast.error("Could not update notifications");
+    }
+  }
 
   return (
     <AppLayout title="Notifications" subtitle={`${unread} unread notification${unread === 1 ? "" : "s"}`}>
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <Bell className="size-4" />
-          Stay updated on fees, attendance, and announcements
+          Live notifications from your Supabase account
         </div>
-        <Button variant="outline" size="sm">Mark all as read</Button>
+        {unread > 0 && (
+          <Button variant="outline" size="sm" onClick={handleMarkAllRead}>Mark all as read</Button>
+        )}
       </div>
 
       <div className="space-y-3">
+        {notifications.length === 0 && (
+          <p className="text-sm text-muted-foreground">No notifications yet.</p>
+        )}
         {notifications.map((n) => {
           const Icon = iconMap[n.type as keyof typeof iconMap] ?? Bell;
           return (

@@ -5,8 +5,9 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Download, CheckCircle2, Clock, AlertCircle } from "lucide-react";
+import { pageHead } from "@/lib/seo";
 
-export const Route = createFileRoute("/fees")({ component: Fees });
+export const Route = createFileRoute("/fees")({ head: () => pageHead("Fees"), component: Fees });
 
 const history = [
   { date: "Aug 12, 2026", desc: "Spring '26 — Installment 2", method: "Bank Transfer", amount: 49000, status: "Paid" },

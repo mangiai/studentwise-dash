@@ -7,8 +7,9 @@ import { Progress } from "@/components/ui/progress";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { AlertTriangle, BookOpen, ChevronRight } from "lucide-react";
+import { pageHead } from "@/lib/seo";
 
-export const Route = createFileRoute("/courses")({ component: Courses });
+export const Route = createFileRoute("/courses")({ head: () => pageHead("Courses"), component: Courses });
 
 const courses = [
   { name: "Database Systems", code: "CS-304", teacher: "Dr. Aamir Khan", credits: 3, att: 82, status: "Ongoing" },

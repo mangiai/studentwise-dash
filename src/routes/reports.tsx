@@ -5,8 +5,9 @@ import {
   AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell, LineChart, Line,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
 } from "recharts";
+import { pageHead } from "@/lib/seo";
 
-export const Route = createFileRoute("/reports")({ component: Reports });
+export const Route = createFileRoute("/reports")({ head: () => pageHead("Reports"), component: Reports });
 
 const enroll = [
   { y: "2021", s: 3200 }, { y: "2022", s: 3680 }, { y: "2023", s: 4120 },

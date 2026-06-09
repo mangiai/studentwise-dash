@@ -5,8 +5,10 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { GraduationCap, BookOpen, Users, ShieldCheck } from "lucide-react";
 import { APP_COPYRIGHT, APP_NAME, APP_TAGLINE } from "@/lib/brand";
+import { pageHead } from "@/lib/seo";
 
 export const Route = createFileRoute("/login")({
+  head: () => pageHead("Sign In"),
   component: Login,
 });
 

@@ -9,8 +9,10 @@ import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   BarChart, Bar, PieChart, Pie, Cell, Legend,
 } from "recharts";
+import { pageHead } from "@/lib/seo";
 
 export const Route = createFileRoute("/dashboard")({
+  head: () => pageHead("Dashboard"),
   component: Dashboard,
 });
 

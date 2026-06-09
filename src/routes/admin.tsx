@@ -13,8 +13,9 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { toast } from "sonner";
 import { Plus, Search, Pencil, Trash2, Users, GraduationCap, BookOpen, Wallet } from "lucide-react";
+import { pageHead } from "@/lib/seo";
 
-export const Route = createFileRoute("/admin")({ component: Admin });
+export const Route = createFileRoute("/admin")({ head: () => pageHead("Admin"), component: Admin });
 
 type Student = { id: string; name: string; dept: string; sem: number; fee: string; status: string };
 

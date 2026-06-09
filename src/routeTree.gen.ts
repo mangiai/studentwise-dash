@@ -9,24 +9,69 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as TeachersRouteImport } from './routes/teachers'
+import { Route as TeacherRouteImport } from './routes/teacher'
 import { Route as SignupRouteImport } from './routes/signup'
+import { Route as SettingsRouteImport } from './routes/settings'
+import { Route as ResultsRouteImport } from './routes/results'
+import { Route as ResultRouteImport } from './routes/result'
 import { Route as ReportsRouteImport } from './routes/reports'
+import { Route as NotificationsRouteImport } from './routes/notifications'
+import { Route as NotifcationsRouteImport } from './routes/notifcations'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as FeesRouteImport } from './routes/fees'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as CoursesRouteImport } from './routes/courses'
 import { Route as AttendanceRouteImport } from './routes/attendance'
-import { Route as AdminRouteImport } from './routes/admin'
+import { Route as AdminRouteRouteImport } from './routes/admin/route'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AdminIndexRouteImport } from './routes/admin/index'
+import { Route as AdminLoginRouteImport } from './routes/admin/login'
+import { Route as AdminDashboardRouteImport } from './routes/admin/dashboard'
 
+const TeachersRoute = TeachersRouteImport.update({
+  id: '/teachers',
+  path: '/teachers',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TeacherRoute = TeacherRouteImport.update({
+  id: '/teacher',
+  path: '/teacher',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SignupRoute = SignupRouteImport.update({
   id: '/signup',
   path: '/signup',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SettingsRoute = SettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ResultsRoute = ResultsRouteImport.update({
+  id: '/results',
+  path: '/results',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ResultRoute = ResultRouteImport.update({
+  id: '/result',
+  path: '/result',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ReportsRoute = ReportsRouteImport.update({
   id: '/reports',
   path: '/reports',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const NotificationsRoute = NotificationsRouteImport.update({
+  id: '/notifications',
+  path: '/notifications',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const NotifcationsRoute = NotifcationsRouteImport.update({
+  id: '/notifcations',
+  path: '/notifcations',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LoginRoute = LoginRouteImport.update({
@@ -54,7 +99,7 @@ const AttendanceRoute = AttendanceRouteImport.update({
   path: '/attendance',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AdminRoute = AdminRouteImport.update({
+const AdminRouteRoute = AdminRouteRouteImport.update({
   id: '/admin',
   path: '/admin',
   getParentRoute: () => rootRouteImport,
@@ -64,40 +109,84 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminIndexRoute = AdminIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
+const AdminLoginRoute = AdminLoginRouteImport.update({
+  id: '/login',
+  path: '/login',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
+const AdminDashboardRoute = AdminDashboardRouteImport.update({
+  id: '/dashboard',
+  path: '/dashboard',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/admin': typeof AdminRoute
+  '/admin': typeof AdminRouteRouteWithChildren
   '/attendance': typeof AttendanceRoute
   '/courses': typeof CoursesRoute
   '/dashboard': typeof DashboardRoute
   '/fees': typeof FeesRoute
   '/login': typeof LoginRoute
+  '/notifcations': typeof NotifcationsRoute
+  '/notifications': typeof NotificationsRoute
   '/reports': typeof ReportsRoute
+  '/result': typeof ResultRoute
+  '/results': typeof ResultsRoute
+  '/settings': typeof SettingsRoute
   '/signup': typeof SignupRoute
+  '/teacher': typeof TeacherRoute
+  '/teachers': typeof TeachersRoute
+  '/admin/dashboard': typeof AdminDashboardRoute
+  '/admin/login': typeof AdminLoginRoute
+  '/admin/': typeof AdminIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/admin': typeof AdminRoute
   '/attendance': typeof AttendanceRoute
   '/courses': typeof CoursesRoute
   '/dashboard': typeof DashboardRoute
   '/fees': typeof FeesRoute
   '/login': typeof LoginRoute
+  '/notifcations': typeof NotifcationsRoute
+  '/notifications': typeof NotificationsRoute
   '/reports': typeof ReportsRoute
+  '/result': typeof ResultRoute
+  '/results': typeof ResultsRoute
+  '/settings': typeof SettingsRoute
   '/signup': typeof SignupRoute
+  '/teacher': typeof TeacherRoute
+  '/teachers': typeof TeachersRoute
+  '/admin/dashboard': typeof AdminDashboardRoute
+  '/admin/login': typeof AdminLoginRoute
+  '/admin': typeof AdminIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/admin': typeof AdminRoute
+  '/admin': typeof AdminRouteRouteWithChildren
   '/attendance': typeof AttendanceRoute
   '/courses': typeof CoursesRoute
   '/dashboard': typeof DashboardRoute
   '/fees': typeof FeesRoute
   '/login': typeof LoginRoute
+  '/notifcations': typeof NotifcationsRoute
+  '/notifications': typeof NotificationsRoute
   '/reports': typeof ReportsRoute
+  '/result': typeof ResultRoute
+  '/results': typeof ResultsRoute
+  '/settings': typeof SettingsRoute
   '/signup': typeof SignupRoute
+  '/teacher': typeof TeacherRoute
+  '/teachers': typeof TeachersRoute
+  '/admin/dashboard': typeof AdminDashboardRoute
+  '/admin/login': typeof AdminLoginRoute
+  '/admin/': typeof AdminIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -109,19 +198,38 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/fees'
     | '/login'
+    | '/notifcations'
+    | '/notifications'
     | '/reports'
+    | '/result'
+    | '/results'
+    | '/settings'
     | '/signup'
+    | '/teacher'
+    | '/teachers'
+    | '/admin/dashboard'
+    | '/admin/login'
+    | '/admin/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
-    | '/admin'
     | '/attendance'
     | '/courses'
     | '/dashboard'
     | '/fees'
     | '/login'
+    | '/notifcations'
+    | '/notifications'
     | '/reports'
+    | '/result'
+    | '/results'
+    | '/settings'
     | '/signup'
+    | '/teacher'
+    | '/teachers'
+    | '/admin/dashboard'
+    | '/admin/login'
+    | '/admin'
   id:
     | '__root__'
     | '/'
@@ -131,24 +239,55 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/fees'
     | '/login'
+    | '/notifcations'
+    | '/notifications'
     | '/reports'
+    | '/result'
+    | '/results'
+    | '/settings'
     | '/signup'
+    | '/teacher'
+    | '/teachers'
+    | '/admin/dashboard'
+    | '/admin/login'
+    | '/admin/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  AdminRoute: typeof AdminRoute
+  AdminRouteRoute: typeof AdminRouteRouteWithChildren
   AttendanceRoute: typeof AttendanceRoute
   CoursesRoute: typeof CoursesRoute
   DashboardRoute: typeof DashboardRoute
   FeesRoute: typeof FeesRoute
   LoginRoute: typeof LoginRoute
+  NotifcationsRoute: typeof NotifcationsRoute
+  NotificationsRoute: typeof NotificationsRoute
   ReportsRoute: typeof ReportsRoute
+  ResultRoute: typeof ResultRoute
+  ResultsRoute: typeof ResultsRoute
+  SettingsRoute: typeof SettingsRoute
   SignupRoute: typeof SignupRoute
+  TeacherRoute: typeof TeacherRoute
+  TeachersRoute: typeof TeachersRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/teachers': {
+      id: '/teachers'
+      path: '/teachers'
+      fullPath: '/teachers'
+      preLoaderRoute: typeof TeachersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/teacher': {
+      id: '/teacher'
+      path: '/teacher'
+      fullPath: '/teacher'
+      preLoaderRoute: typeof TeacherRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/signup': {
       id: '/signup'
       path: '/signup'
@@ -156,11 +295,46 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SignupRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/settings': {
+      id: '/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof SettingsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/results': {
+      id: '/results'
+      path: '/results'
+      fullPath: '/results'
+      preLoaderRoute: typeof ResultsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/result': {
+      id: '/result'
+      path: '/result'
+      fullPath: '/result'
+      preLoaderRoute: typeof ResultRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/reports': {
       id: '/reports'
       path: '/reports'
       fullPath: '/reports'
       preLoaderRoute: typeof ReportsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/notifications': {
+      id: '/notifications'
+      path: '/notifications'
+      fullPath: '/notifications'
+      preLoaderRoute: typeof NotificationsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/notifcations': {
+      id: '/notifcations'
+      path: '/notifcations'
+      fullPath: '/notifcations'
+      preLoaderRoute: typeof NotifcationsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/login': {
@@ -202,7 +376,7 @@ declare module '@tanstack/react-router' {
       id: '/admin'
       path: '/admin'
       fullPath: '/admin'
-      preLoaderRoute: typeof AdminRouteImport
+      preLoaderRoute: typeof AdminRouteRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/': {
@@ -212,19 +386,63 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/': {
+      id: '/admin/'
+      path: '/'
+      fullPath: '/admin/'
+      preLoaderRoute: typeof AdminIndexRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/login': {
+      id: '/admin/login'
+      path: '/login'
+      fullPath: '/admin/login'
+      preLoaderRoute: typeof AdminLoginRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/dashboard': {
+      id: '/admin/dashboard'
+      path: '/dashboard'
+      fullPath: '/admin/dashboard'
+      preLoaderRoute: typeof AdminDashboardRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
   }
 }
 
+interface AdminRouteRouteChildren {
+  AdminDashboardRoute: typeof AdminDashboardRoute
+  AdminLoginRoute: typeof AdminLoginRoute
+  AdminIndexRoute: typeof AdminIndexRoute
+}
+
+const AdminRouteRouteChildren: AdminRouteRouteChildren = {
+  AdminDashboardRoute: AdminDashboardRoute,
+  AdminLoginRoute: AdminLoginRoute,
+  AdminIndexRoute: AdminIndexRoute,
+}
+
+const AdminRouteRouteWithChildren = AdminRouteRoute._addFileChildren(
+  AdminRouteRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  AdminRoute: AdminRoute,
+  AdminRouteRoute: AdminRouteRouteWithChildren,
   AttendanceRoute: AttendanceRoute,
   CoursesRoute: CoursesRoute,
   DashboardRoute: DashboardRoute,
   FeesRoute: FeesRoute,
   LoginRoute: LoginRoute,
+  NotifcationsRoute: NotifcationsRoute,
+  NotificationsRoute: NotificationsRoute,
   ReportsRoute: ReportsRoute,
+  ResultRoute: ResultRoute,
+  ResultsRoute: ResultsRoute,
+  SettingsRoute: SettingsRoute,
   SignupRoute: SignupRoute,
+  TeacherRoute: TeacherRoute,
+  TeachersRoute: TeachersRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

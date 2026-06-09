@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
-import { AppLayout } from "@/components/AppLayout";
+import { AdminLayout } from "@/components/AdminLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -16,7 +16,7 @@ import { Plus, Search, Pencil, Trash2, Users, GraduationCap, BookOpen, Wallet } 
 import { pageHead } from "@/lib/seo";
 import { requireAdmin } from "@/lib/auth-guards";
 
-export const Route = createFileRoute("/admin")({ head: () => pageHead("Admin"), beforeLoad: ({ context }) => { requireAdmin(context.authUser); }, component: Admin });
+export const Route = createFileRoute("/admin/dashboard")({ head: () => pageHead("Admin"), beforeLoad: ({ context }) => { requireAdmin(context.authUser); }, component: Admin });
 
 type Student = { id: string; name: string; dept: string; sem: number; fee: string; status: string };
 
@@ -142,7 +142,7 @@ function Admin() {
   const manageCourse = courses.find((c) => c.id === manageCourseId) || null;
 
   return (
-    <AppLayout title="Admin Dashboard" subtitle="Manage students, teachers, courses, and university records">
+    <AdminLayout title="Admin Dashboard" subtitle="Manage students, teachers, courses, and university records">
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4 mb-6">
         {kpis.map((k) => (
           <Card key={k.label}><CardContent className="p-5 flex items-center gap-4">
@@ -467,6 +467,6 @@ function Admin() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </AppLayout>
+    </AdminLayout>
   );
 }

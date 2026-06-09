@@ -1,4 +1,4 @@
-import { getCookies, setCookie } from "@tanstack/react-start/server";
+import { deleteCookie, getCookies, setCookie } from "@tanstack/react-start/server";
 import { createServerClient } from "@supabase/ssr";
 import { createClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/database.types";
@@ -25,9 +25,20 @@ export function getSupabaseServerClient() {
           value,
         }));
       },
-      setAll(cookies) {
-        cookies.forEach((cookie) => {
-          setCookie(cookie.name, cookie.value);
+      setAll(cookiesToSet) {
+        cookiesToSet.forEach(({ name, value, options }) => {
+          const cookieOptions = {
+            ...options,
+            path: options?.path ?? "/",
+            sameSite: (options?.sameSite as "lax" | "strict" | "none" | undefined) ?? "lax",
+            secure: options?.secure ?? process.env.NODE_ENV === "production",
+          };
+
+          if (value) {
+            setCookie(name, value, cookieOptions);
+          } else {
+            deleteCookie(name, { path: cookieOptions.path });
+          }
         });
       },
     },

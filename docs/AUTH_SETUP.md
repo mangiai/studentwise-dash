@@ -41,7 +41,8 @@ npx supabase login
 npx supabase link --project-ref YOUR_REF
 npm run db:push
 npx supabase db query --linked --file supabase/seed.sql
-npm run seed:users
+npx supabase db query --linked --file supabase/seed-auth-users.sql
+# OR: npm run seed:users
 ```
 
 ---
@@ -78,3 +79,31 @@ npm run dev
 ```
 
 Open http://localhost:3000 → redirects to login → use any test email above.
+
+---
+
+## 7. Cloud (Supabase + Vercel) checklist
+
+If login fails on your deployed app:
+
+1. **Vercel env vars** — all 5 keys must be set for Production **and** Preview:
+   - `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`
+   - `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`
+   - Redeploy after adding/changing env vars.
+
+2. **Supabase Auth → URL Configuration**
+   - Site URL: your Vercel production URL (e.g. `https://studentwise-dash.vercel.app`)
+   - Redirect URLs: `https://*.vercel.app/**` and your exact production URL
+
+3. **Supabase Auth → Providers → Email**
+   - Email provider ON
+   - Turn **OFF** "Confirm email" for test accounts (or users won't get past signup)
+
+4. **Re-seed test users on cloud** (pick one):
+   - **Recommended:** `npm run seed:users` locally with cloud keys in `.env`
+   - **Or:** re-run the updated `supabase/seed-auth-users.sql` in Supabase SQL Editor
+
+5. **Test login**
+   - Email: `admin@studentwise.test`
+   - Password: `StudentWise123!`
+   - After login you should land on `/dashboard` (full page reload ensures cookies sync on Vercel)

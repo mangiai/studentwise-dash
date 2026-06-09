@@ -1,4 +1,4 @@
-import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,8 +9,8 @@ import { toast } from "sonner";
 import { APP_NAME } from "@/lib/brand";
 import { requireGuest } from "@/lib/auth-guards";
 import { pageHead } from "@/lib/seo";
-import { signUp } from "@/lib/supabase/auth";
-import { isSupabaseConfigured } from "@/lib/supabase/client";
+import { linkStudentAccount } from "@/lib/supabase/auth";
+import { signUpWithEmail, isSupabaseConfigured } from "@/lib/supabase/client";
 
 export const Route = createFileRoute("/signup")({
   head: () => pageHead("Sign Up"),
@@ -21,7 +21,6 @@ export const Route = createFileRoute("/signup")({
 });
 
 function Signup() {
-  const router = useRouter();
   const [fullName, setFullName] = useState("");
   const [studentId, setStudentId] = useState("");
   const [email, setEmail] = useState("");
@@ -50,16 +49,16 @@ function Signup() {
 
     setLoading(true);
     try {
-      await signUp({
-        data: {
-          email,
-          password,
-          fullName,
-          studentId: studentId.trim() || undefined,
-        },
-      });
-      toast.success("Account created! You can sign in now.");
-      await router.navigate({ to: "/login" });
+      await signUpWithEmail(email.trim(), password, fullName.trim());
+
+      if (studentId.trim()) {
+        await linkStudentAccount({
+          data: { studentId: studentId.trim(), fullName: fullName.trim() },
+        });
+      }
+
+      toast.success("Account created!");
+      window.location.href = "/dashboard";
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Sign up failed");
     } finally {

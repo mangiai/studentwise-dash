@@ -1,42 +1,18 @@
 import { useRouterState } from "@tanstack/react-router";
-import {
-  LayoutDashboard,
-  BookOpen,
-  CalendarCheck2,
-  Wallet,
-  Users,
-  GraduationCap,
-  BarChart3,
-  Bell,
-  Settings,
-  LogOut,
-  Search,
-  ShieldCheck,
-} from "lucide-react";
+import { LayoutDashboard, LogOut, ShieldCheck, ArrowLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { APP_LOGO_SHORT, APP_NAME, APP_TAGLINE } from "@/lib/brand";
-import type { UserRole } from "@/lib/auth-types";
+import { APP_LOGO_SHORT, APP_NAME } from "@/lib/brand";
 import { useAuthUser } from "@/hooks/use-auth";
 import { signOutFromBrowser } from "@/lib/supabase/client";
 import { toast } from "sonner";
 
-const nav: { to: string; label: string; icon: typeof LayoutDashboard; roles: UserRole[] }[] = [
-  { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard, roles: ["student", "teacher", "admin"] },
-  { to: "/courses", label: "My Courses", icon: BookOpen, roles: ["student", "teacher", "admin"] },
-  { to: "/attendance", label: "Attendance", icon: CalendarCheck2, roles: ["student", "teacher", "admin"] },
-  { to: "/fees", label: "Fee Management", icon: Wallet, roles: ["student", "admin"] },
-  { to: "/teachers", label: "Teachers", icon: Users, roles: ["student", "teacher", "admin"] },
-  { to: "/results", label: "Results", icon: GraduationCap, roles: ["student", "teacher", "admin"] },
-  { to: "/reports", label: "Reports", icon: BarChart3, roles: ["teacher", "admin"] },
-  { to: "/admin/dashboard", label: "Admin Panel", icon: ShieldCheck, roles: ["admin"] },
-  { to: "/notifications", label: "Notifications", icon: Bell, roles: ["student", "teacher", "admin"] },
-  { to: "/settings", label: "Settings", icon: Settings, roles: ["student", "teacher", "admin"] },
+const nav = [
+  { to: "/admin/dashboard", label: "Admin Dashboard", icon: LayoutDashboard },
 ];
 
-export function AppLayout({ children, title, subtitle }: { children: React.ReactNode; title: string; subtitle?: string }) {
+export function AdminLayout({ children, title, subtitle }: { children: React.ReactNode; title: string; subtitle?: string }) {
   const path = useRouterState({ select: (s) => s.location.pathname });
   const authUser = useAuthUser();
   const initials = authUser?.fullName
@@ -44,16 +20,12 @@ export function AppLayout({ children, title, subtitle }: { children: React.React
     .map((part) => part[0])
     .join("")
     .slice(0, 2)
-    .toUpperCase() ?? "?";
-
-  const visibleNav = nav.filter((item) =>
-    authUser ? item.roles.includes(authUser.role) : true,
-  );
+    .toUpperCase() ?? "A";
 
   async function handleLogout() {
     try {
       await signOutFromBrowser();
-      window.location.href = authUser?.role === "admin" ? "/admin/login" : "/login";
+      window.location.href = "/admin/login";
     } catch {
       toast.error("Could not sign out");
     }
@@ -68,11 +40,11 @@ export function AppLayout({ children, title, subtitle }: { children: React.React
           </div>
           <div className="leading-tight">
             <div className="font-semibold tracking-tight">{APP_NAME}</div>
-            <div className="text-[11px] opacity-70">{APP_TAGLINE}</div>
+            <div className="text-[11px] opacity-70">Admin Portal</div>
           </div>
         </div>
         <nav className="flex-1 overflow-y-auto py-4 px-3 space-y-0.5 text-sm">
-          {visibleNav.map((item) => {
+          {nav.map((item) => {
             const active = path === item.to;
             const Icon = item.icon;
             return (
@@ -91,6 +63,13 @@ export function AppLayout({ children, title, subtitle }: { children: React.React
               </a>
             );
           })}
+          <a
+            href="/dashboard"
+            className="flex items-center gap-3 rounded-md px-3 py-2 text-sidebar-foreground/80 hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground transition-colors mt-4"
+          >
+            <ArrowLeft className="size-4" />
+            Student portal
+          </a>
         </nav>
         <div className="p-3 border-t border-sidebar-border">
           <button
@@ -104,24 +83,20 @@ export function AppLayout({ children, title, subtitle }: { children: React.React
       </aside>
 
       <div className="flex-1 flex flex-col min-w-0">
-        <header className="sticky top-0 z-10 bg-card border-b h-16 px-4 lg:px-8 flex items-center gap-4">
-          <div className="flex-1 max-w-md relative">
-            <Search className="size-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-            <Input placeholder="Search students, courses, teachers..." className="pl-9 bg-background" />
+        <header className="sticky top-0 z-10 bg-card border-b h-16 px-4 lg:px-8 flex items-center justify-between gap-4">
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <ShieldCheck className="size-4" />
+            Admin access only
           </div>
-          <button className="relative p-2 rounded-md hover:bg-muted">
-            <Bell className="size-5 text-muted-foreground" />
-            <span className="absolute top-1.5 right-1.5 size-2 rounded-full bg-destructive" />
-          </button>
-          <div className="hidden sm:flex items-center gap-3 pl-3 border-l">
+          <div className="flex items-center gap-3">
             <Avatar className="size-9">
               <AvatarFallback className="bg-primary text-primary-foreground text-xs font-semibold">
                 {initials}
               </AvatarFallback>
             </Avatar>
-            <div className="leading-tight">
-              <div className="text-sm font-medium">{authUser?.fullName ?? "User"}</div>
-              <div className="text-xs text-muted-foreground capitalize">{authUser?.role ?? APP_TAGLINE}</div>
+            <div className="leading-tight hidden sm:block">
+              <div className="text-sm font-medium">{authUser?.fullName ?? "Admin"}</div>
+              <div className="text-xs text-muted-foreground">Administrator</div>
             </div>
           </div>
         </header>

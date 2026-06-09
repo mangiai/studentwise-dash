@@ -3,23 +3,22 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Checkbox } from "@/components/ui/checkbox";
-import { GraduationCap, BookOpen, Users, ShieldCheck } from "lucide-react";
+import { ShieldCheck, Lock, Users, BarChart3 } from "lucide-react";
 import { toast } from "sonner";
-import { APP_COPYRIGHT, APP_NAME, APP_TAGLINE } from "@/lib/brand";
-import { requireGuest } from "@/lib/auth-guards";
+import { APP_COPYRIGHT, APP_NAME } from "@/lib/brand";
+import { requireAdminGuest } from "@/lib/auth-guards";
 import { pageHead } from "@/lib/seo";
 import { isSupabaseConfigured, signInWithEmail } from "@/lib/supabase/client";
 
-export const Route = createFileRoute("/login")({
-  head: () => pageHead("Sign In"),
+export const Route = createFileRoute("/admin/login")({
+  head: () => pageHead("Admin Sign In"),
   beforeLoad: ({ context }) => {
-    requireGuest(context.authUser);
+    requireAdminGuest(context.authUser);
   },
-  component: Login,
+  component: AdminLogin,
 });
 
-function Login() {
+function AdminLogin() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -35,9 +34,8 @@ function Login() {
     setLoading(true);
     try {
       await signInWithEmail(email.trim(), password);
-      toast.success("Welcome back!");
-      // Full reload so Vercel/cloud SSR picks up auth cookies reliably
-      window.location.href = "/dashboard";
+      toast.success("Welcome, admin!");
+      window.location.href = "/admin/dashboard";
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Sign in failed");
     } finally {
@@ -51,27 +49,26 @@ function Login() {
         <div className="absolute inset-0 opacity-20 [background:radial-gradient(circle_at_20%_30%,white_0,transparent_40%),radial-gradient(circle_at_80%_70%,white_0,transparent_40%)]" />
         <div className="relative flex items-center gap-3">
           <div className="size-10 rounded-xl bg-sidebar-primary grid place-content-center text-sidebar-primary-foreground">
-            <GraduationCap className="size-5" />
+            <ShieldCheck className="size-5" />
           </div>
           <div>
             <div className="font-semibold text-lg">{APP_NAME}</div>
-            <div className="text-xs opacity-70">{APP_TAGLINE}</div>
+            <div className="text-xs opacity-70">Admin Portal</div>
           </div>
         </div>
 
         <div className="relative space-y-6 max-w-md">
           <h2 className="text-3xl font-semibold leading-tight">
-            Empowering students, faculty, and admins — all in one place.
+            Secure admin access for university staff.
           </h2>
           <p className="text-sm opacity-80">
-            Track attendance, manage fees, monitor academic progress, and stay connected with your
-            university.
+            Manage students, teachers, courses, fees, and institutional records from one dashboard.
           </p>
           <div className="grid gap-3 pt-4">
             {[
-              { i: BookOpen, t: "Smart course management" },
-              { i: Users, t: "Faculty and student collaboration" },
-              { i: ShieldCheck, t: "Secure fee payments & records" },
+              { i: Users, t: "Student & faculty management" },
+              { i: BarChart3, t: "Reports and analytics" },
+              { i: Lock, t: "Role-based secure access" },
             ].map(({ i: Icon, t }) => (
               <div key={t} className="flex items-center gap-3 text-sm">
                 <div className="size-8 rounded-md bg-sidebar-accent grid place-content-center">
@@ -90,12 +87,14 @@ function Login() {
         <div className="w-full max-w-md">
           <div className="lg:hidden mb-8 flex items-center gap-3">
             <div className="size-10 rounded-xl bg-primary grid place-content-center text-primary-foreground">
-              <GraduationCap className="size-5" />
+              <ShieldCheck className="size-5" />
             </div>
-            <span className="font-semibold text-lg">{APP_NAME}</span>
+            <span className="font-semibold text-lg">{APP_NAME} Admin</span>
           </div>
-          <h1 className="text-2xl font-semibold tracking-tight">Welcome back</h1>
-          <p className="text-sm text-muted-foreground mt-1">Sign in to your account to continue.</p>
+          <h1 className="text-2xl font-semibold tracking-tight">Admin sign in</h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            Use your administrator credentials to access the admin dashboard.
+          </p>
 
           {!supabaseReady && (
             <p className="mt-4 text-sm text-amber-600 bg-amber-500/10 border border-amber-500/20 rounded-md p-3">
@@ -105,11 +104,11 @@ function Login() {
 
           <form className="mt-8 space-y-4" onSubmit={handleSubmit}>
             <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="admin-email">Admin email</Label>
               <Input
-                id="email"
+                id="admin-email"
                 type="email"
-                placeholder="sarah@studentwise.test"
+                placeholder="admin@studentwise.test"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 autoComplete="email"
@@ -117,9 +116,9 @@ function Login() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="pwd">Password</Label>
+              <Label htmlFor="admin-pwd">Password</Label>
               <Input
-                id="pwd"
+                id="admin-pwd"
                 type="password"
                 placeholder="••••••••"
                 value={password}
@@ -128,22 +127,13 @@ function Login() {
                 disabled={loading}
               />
             </div>
-            <label className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Checkbox id="remember" /> Remember me for 30 days
-            </label>
             <Button type="submit" className="w-full bg-primary hover:bg-primary/90" disabled={loading}>
-              {loading ? "Signing in..." : "Sign In"}
+              {loading ? "Signing in..." : "Sign in to Admin"}
             </Button>
             <div className="text-center text-sm text-muted-foreground">
-              Don't have an account?{" "}
-              <Link to="/signup" className="text-accent font-medium hover:underline">
-                Create one
-              </Link>
-            </div>
-            <div className="text-center text-sm text-muted-foreground pt-2">
-              Administrator?{" "}
-              <Link to="/admin/login" className="text-accent font-medium hover:underline">
-                Admin login
+              Student or teacher?{" "}
+              <Link to="/login" className="text-accent font-medium hover:underline">
+                Portal login
               </Link>
             </div>
           </form>

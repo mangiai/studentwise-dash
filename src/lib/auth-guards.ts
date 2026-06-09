@@ -14,8 +14,19 @@ export function requireGuest(authUser: AuthUser | null | undefined) {
 }
 
 export function requireAdmin(authUser: AuthUser | null | undefined) {
-  requireAuth(authUser);
-  if (authUser!.role !== "admin") {
+  if (!authUser) {
+    throw redirect({ to: "/admin/login" });
+  }
+  if (authUser.role !== "admin") {
+    throw redirect({ to: "/dashboard" });
+  }
+}
+
+export function requireAdminGuest(authUser: AuthUser | null | undefined) {
+  if (authUser?.role === "admin") {
+    throw redirect({ to: "/admin/dashboard" });
+  }
+  if (authUser) {
     throw redirect({ to: "/dashboard" });
   }
 }

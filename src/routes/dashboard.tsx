@@ -11,6 +11,7 @@ import {
 } from "recharts";
 import { requireAuth } from "@/lib/auth-guards";
 import { pageHead } from "@/lib/seo";
+import { useAuthUser } from "@/hooks/use-auth";
 
 export const Route = createFileRoute("/dashboard")({
   head: () => pageHead("Dashboard"),
@@ -55,8 +56,11 @@ const upcoming = [
 ];
 
 function Dashboard() {
+  const authUser = useAuthUser();
+  const firstName = authUser?.fullName?.split(" ")[0] ?? "there";
+
   return (
-    <AppLayout title="Welcome back, Sarah" subtitle="Here's what's happening with your studies today.">
+    <AppLayout title={`Welcome back, ${firstName}`} subtitle="Here's what's happening with your studies today.">
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {stats.map((s) => (
           <Card key={s.label} className="border-border/60">

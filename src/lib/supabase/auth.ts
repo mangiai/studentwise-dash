@@ -19,6 +19,22 @@ const signUpSchema = z.object({
   studentId: z.string().optional(),
 });
 
+function resolveUserRole(
+  profileRole: string | null | undefined,
+  appMetadata: Record<string, unknown> | undefined,
+): UserRole {
+  const metaRole =
+    typeof appMetadata?.role === "string" ? (appMetadata.role as UserRole) : undefined;
+  const fromProfile =
+    profileRole === "admin" || profileRole === "teacher" || profileRole === "student"
+      ? (profileRole as UserRole)
+      : undefined;
+
+  if (fromProfile === "admin" || metaRole === "admin") return "admin";
+  if (fromProfile === "teacher" || metaRole === "teacher") return "teacher";
+  return fromProfile ?? metaRole ?? "student";
+}
+
 async function fetchAuthUser(): Promise<AuthUser | null> {
   if (!isSupabaseServerConfigured()) return null;
 
@@ -36,11 +52,31 @@ async function fetchAuthUser(): Promise<AuthUser | null> {
     .eq("id", user.id)
     .maybeSingle();
 
+  const metaFullName =
+    typeof user.user_metadata?.full_name === "string"
+      ? user.user_metadata.full_name
+      : undefined;
+  const role = resolveUserRole(profile?.role, user.app_metadata);
+  const fullName = profile?.full_name ?? metaFullName ?? user.email ?? "User";
+
+  if (
+    process.env.SUPABASE_SERVICE_ROLE_KEY &&
+    (!profile || profile.role !== role || profile.full_name !== fullName)
+  ) {
+    try {
+      await getSupabaseServiceClient()
+        .from("profiles")
+        .upsert({ id: user.id, full_name: fullName, role });
+    } catch (syncError) {
+      console.error("Profile sync failed:", syncError);
+    }
+  }
+
   return {
     id: user.id,
     email: user.email ?? "",
-    fullName: profile?.full_name ?? user.email ?? "User",
-    role: (profile?.role as UserRole) ?? "student",
+    fullName,
+    role,
   };
 }
 
@@ -104,3 +140,34 @@ export const signOut = createServerFn({ method: "POST" }).handler(async () => {
 
   return { ok: true as const };
 });
+
+const linkStudentSchema = z.object({
+  studentId: z.string().min(1),
+  fullName: z.string().min(2),
+});
+
+export const linkStudentAccount = createServerFn({ method: "POST" })
+  .validator((data: unknown) => linkStudentSchema.parse(data))
+  .handler(async ({ data }) => {
+    if (!isSupabaseServerConfigured()) {
+      throw new Error("Supabase is not configured.");
+    }
+
+    const supabase = getSupabaseServerClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) throw new Error("Sign in required to link a student record.");
+
+    const admin = getSupabaseServiceClient();
+    const { error: linkError } = await admin
+      .from("students")
+      .update({ user_id: user.id, name: data.fullName })
+      .eq("id", data.studentId.trim())
+      .is("user_id", null);
+
+    if (linkError) throw new Error(linkError.message);
+
+    return { ok: true as const };
+  });

@@ -56,7 +56,7 @@ npm run db:push
 3. Seed demo data (run once in the SQL editor or via CLI):
 
 ```bash
-npx supabase db execute --file supabase/seed.sql
+npx supabase db query --linked --file supabase/seed.sql
 ```
 
 4. Regenerate TypeScript types after schema changes:

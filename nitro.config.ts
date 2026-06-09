@@ -5,6 +5,11 @@ const isVercel = Boolean(process.env.VERCEL || process.env.VERCEL_ENV);
 export default defineConfig({
   compatibilityDate: "2025-09-24",
   preset: isVercel ? "vercel" : undefined,
+  vercel: {
+    functions: {
+      runtime: "nodejs22.x",
+    },
+  },
   routeRules: {
     "/assets/**": {
       headers: {

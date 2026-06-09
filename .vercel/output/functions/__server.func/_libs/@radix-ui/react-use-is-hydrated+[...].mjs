@@ -1,4 +1,4 @@
-import { c as React, r as reactExports } from "../react.mjs";
+import { b as React, r as reactExports } from "../react.mjs";
 var _isHydrated = false;
 function useIsHydrated() {
   const [isHydrated, setIsHydrated] = reactExports.useState(_isHydrated);

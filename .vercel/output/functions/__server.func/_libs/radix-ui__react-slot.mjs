@@ -1,4 +1,4 @@
-import { r as reactExports, c as React } from "./react.mjs";
+import { r as reactExports, b as React } from "./react.mjs";
 import { u as useComposedRefs } from "./radix-ui__react-compose-refs.mjs";
 // @__NO_SIDE_EFFECTS__
 function createSlot(ownerName) {

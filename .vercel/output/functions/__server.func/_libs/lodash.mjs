@@ -1,4 +1,4 @@
-import { d as commonjsGlobal, g as getDefaultExportFromCjs } from "./react.mjs";
+import { c as commonjsGlobal, g as getDefaultExportFromCjs } from "./react.mjs";
 var isArray_1;
 var hasRequiredIsArray;
 function requireIsArray() {

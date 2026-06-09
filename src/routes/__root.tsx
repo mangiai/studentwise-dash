@@ -76,8 +76,13 @@ export const Route = createRootRouteWithContext<{
   authUser: AuthUser | null;
 }>()({
   beforeLoad: async () => {
-    const authUser = await getAuthUser();
-    return { authUser };
+    try {
+      const authUser = await getAuthUser();
+      return { authUser };
+    } catch (error) {
+      console.error("Auth bootstrap failed:", error);
+      return { authUser: null };
+    }
   },
   head: () => {
     const seo = appHead();

@@ -126,7 +126,10 @@ function Dashboard() {
           </CardHeader>
           <CardContent className="space-y-3">
             {upcoming.length === 0 && (
-              <p className="text-sm text-muted-foreground">No enrollments found. Link your account to a student record.</p>
+              <p className="text-sm text-muted-foreground">
+                No course data yet. Ask your admin to run{" "}
+                <code className="text-xs bg-muted px-1 rounded">npm run seed:all</code> on Supabase, then sign in again.
+              </p>
             )}
             {upcoming.map((u) => (
               <div key={u.course} className="flex items-center gap-4 p-3 rounded-lg border bg-muted/30">

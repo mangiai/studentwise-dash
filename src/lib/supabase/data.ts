@@ -40,10 +40,28 @@ async function requireAdminUser() {
   return user;
 }
 
-async function getLinkedStudentId(userId: string) {
+async function getLinkedStudentId(userId: string, email?: string | null) {
   const supabase = getSupabaseServerClient();
   const { data } = await supabase.from("students").select("id").eq("user_id", userId).maybeSingle();
-  return data?.id ?? null;
+  if (data?.id) return data.id;
+
+  // Auto-link test/demo accounts when service role is available
+  const testLinks: Record<string, string> = {
+    "sarah@studentwise.test": "2026-BSCS-0042",
+    "hassan@studentwise.test": "2026-BSCS-0043",
+    "maryam@studentwise.test": "2025-BSEE-0118",
+  };
+
+  const studentRecordId = email ? testLinks[email] : undefined;
+  if (!studentRecordId || !process.env.SUPABASE_SERVICE_ROLE_KEY) return null;
+
+  const admin = getSupabaseServiceClient();
+  const { error } = await admin.from("students").update({ user_id: userId }).eq("id", studentRecordId);
+  if (error) {
+    console.error("Auto-link student failed:", error.message);
+    return null;
+  }
+  return studentRecordId;
 }
 
 // ─── Dashboard ───────────────────────────────────────────────────────────────
@@ -56,7 +74,7 @@ export const fetchPortalDashboard = createServerFn({ method: "GET" }).handler(as
   if (!user) return { configured: true as const, data: null };
 
   const role = await getProfileRole(user.id);
-  const studentId = await getLinkedStudentId(user.id);
+  const studentId = await getLinkedStudentId(user.id, user.email);
 
   if (role === "admin" || role === "teacher") {
     const [students, courses, teachers, pendingFees, enrollments] = await Promise.all([
@@ -171,7 +189,7 @@ export const fetchStudentCourses = createServerFn({ method: "GET" }).handler(asy
   const user = await getSessionUser();
   if (!user) return { configured: true as const, courses: [] };
 
-  const studentId = await getLinkedStudentId(user.id);
+  const studentId = await getLinkedStudentId(user.id, user.email);
   if (!studentId) return { configured: true as const, courses: [] };
 
   const supabase = getSupabaseServerClient();
@@ -206,7 +224,7 @@ export const fetchStudentAttendance = createServerFn({ method: "GET" }).handler(
   const user = await getSessionUser();
   if (!user) return { configured: true as const, rows: [], summary: null };
 
-  const studentId = await getLinkedStudentId(user.id);
+  const studentId = await getLinkedStudentId(user.id, user.email);
   if (!studentId) return { configured: true as const, rows: [], summary: null };
 
   const supabase = getSupabaseServerClient();
@@ -250,7 +268,7 @@ export const fetchStudentFees = createServerFn({ method: "GET" }).handler(async 
   const user = await getSessionUser();
   if (!user) return { configured: true as const, fees: null, history: [] };
 
-  const studentId = await getLinkedStudentId(user.id);
+  const studentId = await getLinkedStudentId(user.id, user.email);
   if (!studentId) return { configured: true as const, fees: null, history: [] };
 
   const supabase = getSupabaseServerClient();
@@ -335,7 +353,7 @@ export const fetchStudentResults = createServerFn({ method: "GET" }).handler(asy
   const user = await getSessionUser();
   if (!user) return { configured: true as const, semesters: [], student: null };
 
-  const studentId = await getLinkedStudentId(user.id);
+  const studentId = await getLinkedStudentId(user.id, user.email);
   if (!studentId) return { configured: true as const, semesters: [], student: null };
 
   const supabase = getSupabaseServerClient();
@@ -502,14 +520,19 @@ export const fetchAdminData = createServerFn({ method: "GET" }).handler(async ()
       admin.from("students").select("id, name, semester, fee_status, status, departments ( name )").order("name"),
       admin.from("teachers").select("id, name, courses_count, status, departments ( name )").order("name"),
       admin.from("courses").select("id, name, credits, instructor_id, teachers ( name )").order("name"),
-      admin.from("enrollments").select("course_id, student_id"),
+      admin.from("enrollments").select("course_id, student_id").eq("semester", "Spring 2026"),
     ]);
 
   const enrolledByCourse = new Map<string, string[]>();
+  const enrolledByStudent = new Map<string, string[]>();
   for (const e of enrollments ?? []) {
-    const list = enrolledByCourse.get(e.course_id) ?? [];
-    list.push(e.student_id);
-    enrolledByCourse.set(e.course_id, list);
+    const courseList = enrolledByCourse.get(e.course_id) ?? [];
+    courseList.push(e.student_id);
+    enrolledByCourse.set(e.course_id, courseList);
+
+    const studentList = enrolledByStudent.get(e.student_id) ?? [];
+    studentList.push(e.course_id);
+    enrolledByStudent.set(e.student_id, studentList);
   }
 
   return {
@@ -521,6 +544,7 @@ export const fetchAdminData = createServerFn({ method: "GET" }).handler(async ()
       sem: s.semester,
       fee: s.fee_status,
       status: s.status,
+      enrolledCourseIds: enrolledByStudent.get(s.id) ?? [],
     })),
     teachers: (teachers ?? []).map((t) => ({
       id: t.id,

@@ -95,9 +95,32 @@ export const signIn = createServerFn({ method: "POST" })
     }
 
     const supabase = getSupabaseServerClient();
-    const { error } = await supabase.auth.signInWithPassword(data);
+    const { data: authData, error } = await supabase.auth.signInWithPassword(data);
 
     if (error) throw new Error(error.message);
+
+    const userId = authData.user?.id;
+    const testStudentLinks: Record<string, string> = {
+      "sarah@studentwise.test": "2026-BSCS-0042",
+      "hassan@studentwise.test": "2026-BSCS-0043",
+      "maryam@studentwise.test": "2025-BSEE-0118",
+    };
+    const testTeacherLinks: Record<string, string> = {
+      "teacher@studentwise.test": "FAC-2018-014",
+    };
+
+    if (userId && process.env.SUPABASE_SERVICE_ROLE_KEY) {
+      const admin = getSupabaseServiceClient();
+      const studentId = testStudentLinks[data.email];
+      const teacherId = testTeacherLinks[data.email];
+
+      if (studentId) {
+        await admin.from("students").update({ user_id: userId }).eq("id", studentId);
+      }
+      if (teacherId) {
+        await admin.from("teachers").update({ user_id: userId }).eq("id", teacherId);
+      }
+    }
 
     return { ok: true as const };
   });

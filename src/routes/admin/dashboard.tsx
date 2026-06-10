@@ -54,7 +54,15 @@ export const Route = createFileRoute("/admin/dashboard")({
   component: Admin,
 });
 
-type Student = { id: string; name: string; dept: string; sem: number; fee: string; status: string };
+type Student = {
+  id: string;
+  name: string;
+  dept: string;
+  sem: number;
+  fee: string;
+  status: string;
+  enrolledCourseIds: string[];
+};
 type Teacher = { id: string; name: string; dept: string; courses: number; status: string };
 type Course = { id: string; name: string; credits: number; instructor: string; instructorId?: string | null; enrolledIds: string[] };
 type DeleteTarget = { kind: "student" | "teacher" | "course"; id: string; name: string };
@@ -131,6 +139,9 @@ function Admin() {
   const [manageCourseId, setManageCourseId] = useState<string | null>(null);
   const [enrollSelect, setEnrollSelect] = useState("");
 
+  const [manageStudentId, setManageStudentId] = useState<string | null>(null);
+  const [assignCourseSelect, setAssignCourseSelect] = useState("");
+
   const [assignTeacherId, setAssignTeacherId] = useState<string | null>(null);
   const [assignCourseSelect, setAssignCourseSelect] = useState("");
 
@@ -173,6 +184,7 @@ function Admin() {
   );
 
   const manageCourse = courses.find((c) => c.id === manageCourseId) ?? null;
+  const manageStudent = students.find((s) => s.id === manageStudentId) ?? null;
   const assignTeacher = teachers.find((t) => t.id === assignTeacherId) ?? null;
 
   const kpis = [
@@ -346,6 +358,15 @@ function Admin() {
     }
   }
 
+  async function assignCourseToStudent() {
+    if (!manageStudentId || !assignCourseSelect) {
+      toast.error("Select a course to assign");
+      return;
+    }
+    await enrollStudentInCourse(assignCourseSelect, manageStudentId);
+    setAssignCourseSelect("");
+  }
+
   async function assignCourseToTeacher() {
     if (!assignTeacherId || !assignCourseSelect) {
       toast.error("Select a course to assign");
@@ -438,6 +459,7 @@ function Admin() {
                     <TableHead>ID</TableHead>
                     <TableHead>Department</TableHead>
                     <TableHead className="text-center">Sem</TableHead>
+                    <TableHead className="text-center">Courses</TableHead>
                     <TableHead>Fee</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
@@ -446,7 +468,7 @@ function Admin() {
                 <TableBody>
                   {filteredStudents.length === 0 && (
                     <TableRow>
-                      <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
+                      <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
                         No students found.
                       </TableCell>
                     </TableRow>
@@ -466,9 +488,25 @@ function Admin() {
                       <TableCell className="font-mono text-xs text-muted-foreground">{s.id}</TableCell>
                       <TableCell>{s.dept}</TableCell>
                       <TableCell className="text-center">{s.sem}</TableCell>
+                      <TableCell className="text-center">
+                        <Badge variant="outline" className="font-mono text-xs">
+                          {s.enrolledCourseIds.length}
+                        </Badge>
+                      </TableCell>
                       <TableCell>{statusBadge(s.fee)}</TableCell>
                       <TableCell>{statusBadge(s.status)}</TableCell>
-                      <TableCell className="text-right">
+                      <TableCell className="text-right space-x-1">
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          onClick={() => {
+                            setManageStudentId(s.id);
+                            setAssignCourseSelect("");
+                          }}
+                        >
+                          Assign Courses
+                        </Button>
                         <Button type="button" size="icon" variant="ghost" onClick={() => openStudentDialog(s)}>
                           <Pencil className="size-4" />
                         </Button>
@@ -927,6 +965,78 @@ function Admin() {
             </Button>
             <Button type="button" onClick={saveCourse} className="bg-primary hover:bg-primary/90">
               {editingCourseId ? "Save changes" : "Add Course"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Manage student course assignments */}
+      <Dialog open={!!manageStudentId} onOpenChange={(open) => !open && setManageStudentId(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Assign courses — {manageStudent?.name}</DialogTitle>
+            <DialogDescription>
+              {manageStudent?.id} · {manageStudent?.dept} · Spring 2026 semester
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-2">
+            <div className="grid gap-2">
+              <Label>Add a course</Label>
+              <div className="flex gap-2">
+                <Select value={assignCourseSelect} onValueChange={setAssignCourseSelect}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select course" />
+                  </SelectTrigger>
+                  <SelectContent className={selectContentClass}>
+                    {courses
+                      .filter((c) => !manageStudent?.enrolledCourseIds.includes(c.id))
+                      .map((c) => (
+                        <SelectItem key={c.id} value={c.id}>
+                          {c.name} ({c.id}) · {c.credits} cr
+                        </SelectItem>
+                      ))}
+                  </SelectContent>
+                </Select>
+                <Button type="button" onClick={assignCourseToStudent} disabled={!assignCourseSelect}>
+                  Assign
+                </Button>
+              </div>
+            </div>
+            <div className="grid gap-2">
+              <Label>Enrolled courses ({manageStudent?.enrolledCourseIds.length ?? 0})</Label>
+              <div className="border rounded-lg divide-y max-h-64 overflow-auto">
+                {manageStudent && manageStudent.enrolledCourseIds.length === 0 && (
+                  <div className="p-3 text-sm text-muted-foreground">
+                    No courses assigned yet. Assign a course above — the student will see it on their dashboard.
+                  </div>
+                )}
+                {manageStudent?.enrolledCourseIds.map((cid) => {
+                  const c = courses.find((x) => x.id === cid);
+                  return (
+                    <div key={cid} className="flex items-center justify-between p-3">
+                      <div>
+                        <div className="text-sm font-medium">{c?.name ?? cid}</div>
+                        <div className="text-xs text-muted-foreground font-mono">
+                          {cid} · {c?.credits ?? "?"} credits · {c?.instructor ?? "TBA"}
+                        </div>
+                      </div>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => manageStudentId && unenrollStudent(cid, manageStudentId)}
+                      >
+                        <Trash2 className="size-4 text-destructive" />
+                      </Button>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setManageStudentId(null)}>
+              Done
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -1,6 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 import { readFileSync, existsSync } from "node:fs";
 import { resolve } from "node:path";
+import { seedDemoData, seedNotificationsForUser } from "./seed-demo-data.mjs";
 
 function loadEnv() {
   const envPath = resolve(process.cwd(), ".env");
@@ -40,6 +41,9 @@ const users = [
     role: "admin",
     studentId: null,
     teacherId: null,
+    notifications: [
+      { type: "announcement", title: "Admin: enrollment window", body: "Fall 2026 enrollment opens next Monday.", read: false },
+    ],
   },
   {
     email: "sarah@studentwise.test",
@@ -47,6 +51,12 @@ const users = [
     role: "student",
     studentId: "2026-BSCS-0042",
     teacherId: null,
+    notifications: [
+      { type: "fee", title: "Fee payment reminder", body: "Fall 2026 installment is due by Sep 15, 2026.", read: false },
+      { type: "attendance", title: "Short attendance alert", body: "Operating Systems attendance is below 75%.", read: false },
+      { type: "course", title: "New assignment posted", body: "Software Engineering — Project milestone 2 is now live.", read: true },
+      { type: "announcement", title: "Spring break schedule", body: "Campus will be closed March 20–27 for spring break.", read: true },
+    ],
   },
   {
     email: "hassan@studentwise.test",
@@ -54,6 +64,9 @@ const users = [
     role: "student",
     studentId: "2026-BSCS-0043",
     teacherId: null,
+    notifications: [
+      { type: "fee", title: "Pending fee notice", body: "Spring 2026 second installment is pending.", read: false },
+    ],
   },
   {
     email: "teacher@studentwise.test",
@@ -61,6 +74,7 @@ const users = [
     role: "teacher",
     studentId: null,
     teacherId: "FAC-2018-014",
+    notifications: [],
   },
   {
     email: "maryam@studentwise.test",
@@ -68,10 +82,15 @@ const users = [
     role: "student",
     studentId: "2025-BSEE-0118",
     teacherId: null,
+    notifications: [],
   },
 ];
 
+await seedDemoData(supabase);
+
 console.log("Creating StudentWise test users...\n");
+
+const userIds = {};
 
 for (const user of users) {
   const { data: existing } = await supabase.auth.admin.listUsers();
@@ -105,6 +124,7 @@ for (const user of users) {
   }
 
   if (!userId) continue;
+  userIds[user.email] = userId;
 
   await supabase.from("profiles").upsert({
     id: userId,
@@ -113,14 +133,25 @@ for (const user of users) {
   });
 
   if (user.studentId) {
-    await supabase
+    const { error } = await supabase
       .from("students")
       .update({ user_id: userId, name: user.fullName })
       .eq("id", user.studentId);
+    if (error) console.error(`  ✗ Link student ${user.studentId}: ${error.message}`);
+    else console.log(`  ✓ Linked ${user.email} → student ${user.studentId}`);
   }
 
   if (user.teacherId) {
-    await supabase.from("teachers").update({ user_id: userId, name: user.fullName }).eq("id", user.teacherId);
+    const { error } = await supabase
+      .from("teachers")
+      .update({ user_id: userId, name: user.fullName })
+      .eq("id", user.teacherId);
+    if (error) console.error(`  ✗ Link teacher ${user.teacherId}: ${error.message}`);
+    else console.log(`  ✓ Linked ${user.email} → teacher ${user.teacherId}`);
+  }
+
+  if (user.notifications.length > 0) {
+    await seedNotificationsForUser(supabase, userId, user.notifications);
   }
 }
 

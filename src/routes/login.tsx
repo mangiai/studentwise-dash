@@ -35,7 +35,8 @@ function Login() {
     try {
       await signIn({ data: { email: email.trim(), password } });
       toast.success("Welcome back!");
-      window.location.href = "/dashboard";
+      // Full reload so dashboard loader fetches linked student data
+      window.location.assign("/dashboard");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Sign in failed");
     } finally {

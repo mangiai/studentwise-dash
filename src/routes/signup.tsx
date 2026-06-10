@@ -9,8 +9,8 @@ import { toast } from "sonner";
 import { APP_NAME } from "@/lib/brand";
 import { requireGuest } from "@/lib/auth-guards";
 import { pageHead } from "@/lib/seo";
-import { linkStudentAccount } from "@/lib/supabase/auth";
-import { signUpWithEmail, isSupabaseConfigured } from "@/lib/supabase/client";
+import { signUp } from "@/lib/supabase/auth";
+import { useSupabaseConfigured } from "@/hooks/use-supabase-configured";
 
 export const Route = createFileRoute("/signup")({
   head: () => pageHead("Sign Up"),
@@ -27,7 +27,7 @@ function Signup() {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
-  const supabaseReady = isSupabaseConfigured();
+  const supabaseReady = useSupabaseConfigured();
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -49,13 +49,14 @@ function Signup() {
 
     setLoading(true);
     try {
-      await signUpWithEmail(email.trim(), password, fullName.trim());
-
-      if (studentId.trim()) {
-        await linkStudentAccount({
-          data: { studentId: studentId.trim(), fullName: fullName.trim() },
-        });
-      }
+      await signUp({
+        data: {
+          email: email.trim(),
+          password,
+          fullName: fullName.trim(),
+          studentId: studentId.trim() || undefined,
+        },
+      });
 
       toast.success("Account created!");
       window.location.href = "/dashboard";

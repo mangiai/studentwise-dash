@@ -8,7 +8,8 @@ import { toast } from "sonner";
 import { APP_COPYRIGHT, APP_NAME } from "@/lib/brand";
 import { requireAdminGuest } from "@/lib/auth-guards";
 import { pageHead } from "@/lib/seo";
-import { isSupabaseConfigured, signInWithEmail } from "@/lib/supabase/client";
+import { signIn } from "@/lib/supabase/auth";
+import { useSupabaseConfigured } from "@/hooks/use-supabase-configured";
 
 export const Route = createFileRoute("/admin/login")({
   head: () => pageHead("Admin Sign In"),
@@ -22,7 +23,7 @@ function AdminLogin() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
-  const supabaseReady = isSupabaseConfigured();
+  const supabaseReady = useSupabaseConfigured();
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -33,7 +34,7 @@ function AdminLogin() {
 
     setLoading(true);
     try {
-      await signInWithEmail(email.trim(), password);
+      await signIn({ data: { email: email.trim(), password } });
       toast.success("Welcome, admin!");
       window.location.href = "/admin/dashboard";
     } catch (err) {

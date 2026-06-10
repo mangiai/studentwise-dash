@@ -5,7 +5,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { APP_LOGO_SHORT, APP_NAME } from "@/lib/brand";
 import { useAuthUser } from "@/hooks/use-auth";
-import { signOutFromBrowser } from "@/lib/supabase/client";
+import { signOut } from "@/lib/supabase/auth";
 import { toast } from "sonner";
 
 const nav = [
@@ -24,7 +24,7 @@ export function AdminLayout({ children, title, subtitle }: { children: React.Rea
 
   async function handleLogout() {
     try {
-      await signOutFromBrowser();
+      await signOut();
       window.location.href = "/admin/login";
     } catch {
       toast.error("Could not sign out");

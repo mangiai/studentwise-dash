@@ -75,14 +75,17 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
 export const Route = createRootRouteWithContext<{
   queryClient: QueryClient;
   authUser: AuthUser | null;
+  supabaseConfigured: boolean;
 }>()({
   beforeLoad: async () => {
+    const supabaseConfigured = getSupabasePublicConfigFromEnv() !== null;
+
     try {
       const authUser = await getAuthUser();
-      return { authUser };
+      return { authUser, supabaseConfigured };
     } catch (error) {
       console.error("Auth bootstrap failed:", error);
-      return { authUser: null };
+      return { authUser: null, supabaseConfigured };
     }
   },
   head: () => {

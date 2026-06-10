@@ -20,7 +20,7 @@ import { Badge } from "@/components/ui/badge";
 import { APP_LOGO_SHORT, APP_NAME, APP_TAGLINE } from "@/lib/brand";
 import type { UserRole } from "@/lib/auth-types";
 import { useAuthUser } from "@/hooks/use-auth";
-import { signOutFromBrowser } from "@/lib/supabase/client";
+import { signOut } from "@/lib/supabase/auth";
 import { toast } from "sonner";
 
 const nav: { to: string; label: string; icon: typeof LayoutDashboard; roles: UserRole[] }[] = [
@@ -52,7 +52,7 @@ export function AppLayout({ children, title, subtitle }: { children: React.React
 
   async function handleLogout() {
     try {
-      await signOutFromBrowser();
+      await signOut();
       window.location.href = authUser?.role === "admin" ? "/admin/login" : "/login";
     } catch {
       toast.error("Could not sign out");

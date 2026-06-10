@@ -9,7 +9,8 @@ import { toast } from "sonner";
 import { APP_COPYRIGHT, APP_NAME, APP_TAGLINE } from "@/lib/brand";
 import { requireGuest } from "@/lib/auth-guards";
 import { pageHead } from "@/lib/seo";
-import { isSupabaseConfigured, signInWithEmail } from "@/lib/supabase/client";
+import { signIn } from "@/lib/supabase/auth";
+import { useSupabaseConfigured } from "@/hooks/use-supabase-configured";
 
 export const Route = createFileRoute("/login")({
   head: () => pageHead("Sign In"),
@@ -23,7 +24,7 @@ function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
-  const supabaseReady = isSupabaseConfigured();
+  const supabaseReady = useSupabaseConfigured();
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -34,9 +35,8 @@ function Login() {
 
     setLoading(true);
     try {
-      await signInWithEmail(email.trim(), password);
+      await signIn({ data: { email: email.trim(), password } });
       toast.success("Welcome back!");
-      // Full reload so Vercel/cloud SSR picks up auth cookies reliably
       window.location.href = "/dashboard";
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Sign in failed");

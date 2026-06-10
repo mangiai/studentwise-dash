@@ -17,11 +17,18 @@ export function getSupabasePublicConfigFromEnv(): SupabasePublicConfig | null {
   return { url, anonKey };
 }
 
-/** Client-side: runtime injection from SSR script, then Vite build-time env. */
+/** Read public config: server runtime env → injected window config → Vite build-time env. */
 export function getSupabasePublicConfig(): SupabasePublicConfig | null {
-  if (typeof window !== "undefined" && window.__SUPABASE_CONFIG__?.url && window.__SUPABASE_CONFIG__?.anonKey) {
+  if (typeof window === "undefined") {
+    return getSupabasePublicConfigFromEnv();
+  }
+
+  if (window.__SUPABASE_CONFIG__?.url && window.__SUPABASE_CONFIG__?.anonKey) {
     return window.__SUPABASE_CONFIG__;
   }
+
+  const fromEnv = getSupabasePublicConfigFromEnv();
+  if (fromEnv) return fromEnv;
 
   const url = import.meta.env.VITE_SUPABASE_URL;
   const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;

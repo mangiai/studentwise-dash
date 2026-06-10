@@ -10,7 +10,6 @@ import { APP_NAME } from "@/lib/brand";
 import { requireGuest } from "@/lib/auth-guards";
 import { pageHead } from "@/lib/seo";
 import { signUp } from "@/lib/supabase/auth";
-import { useSupabaseConfigured } from "@/hooks/use-supabase-configured";
 
 export const Route = createFileRoute("/signup")({
   head: () => pageHead("Sign Up"),
@@ -27,7 +26,6 @@ function Signup() {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
-  const supabaseReady = useSupabaseConfigured();
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -82,12 +80,6 @@ function Signup() {
             Join StudentWise — manage your academic life with ease.
           </p>
         </div>
-
-        {!supabaseReady && (
-          <p className="mb-4 text-sm text-amber-600 bg-amber-500/10 border border-amber-500/20 rounded-md p-3">
-            Supabase is not configured. Set SUPABASE_URL and SUPABASE_ANON_KEY in Vercel, then redeploy.
-          </p>
-        )}
 
         <Card>
           <CardContent className="p-6 sm:p-8">

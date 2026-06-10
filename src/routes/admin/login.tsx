@@ -9,7 +9,6 @@ import { APP_COPYRIGHT, APP_NAME } from "@/lib/brand";
 import { requireAdminGuest } from "@/lib/auth-guards";
 import { pageHead } from "@/lib/seo";
 import { signIn } from "@/lib/supabase/auth";
-import { useSupabaseConfigured } from "@/hooks/use-supabase-configured";
 
 export const Route = createFileRoute("/admin/login")({
   head: () => pageHead("Admin Sign In"),
@@ -23,7 +22,6 @@ function AdminLogin() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
-  const supabaseReady = useSupabaseConfigured();
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -96,12 +94,6 @@ function AdminLogin() {
           <p className="text-sm text-muted-foreground mt-1">
             Use your administrator credentials to access the admin dashboard.
           </p>
-
-          {!supabaseReady && (
-            <p className="mt-4 text-sm text-amber-600 bg-amber-500/10 border border-amber-500/20 rounded-md p-3">
-              Supabase is not configured. Set SUPABASE_URL and SUPABASE_ANON_KEY in Vercel, then redeploy.
-            </p>
-          )}
 
           <form className="mt-8 space-y-4" onSubmit={handleSubmit}>
             <div className="space-y-2">

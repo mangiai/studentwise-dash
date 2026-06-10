@@ -10,7 +10,6 @@ import { APP_COPYRIGHT, APP_NAME, APP_TAGLINE } from "@/lib/brand";
 import { requireGuest } from "@/lib/auth-guards";
 import { pageHead } from "@/lib/seo";
 import { signIn } from "@/lib/supabase/auth";
-import { useSupabaseConfigured } from "@/hooks/use-supabase-configured";
 
 export const Route = createFileRoute("/login")({
   head: () => pageHead("Sign In"),
@@ -24,7 +23,6 @@ function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
-  const supabaseReady = useSupabaseConfigured();
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -96,14 +94,6 @@ function Login() {
           </div>
           <h1 className="text-2xl font-semibold tracking-tight">Welcome back</h1>
           <p className="text-sm text-muted-foreground mt-1">Sign in to your account to continue.</p>
-
-          {!supabaseReady && (
-            <p className="mt-4 text-sm text-amber-600 bg-amber-500/10 border border-amber-500/20 rounded-md p-3">
-              Supabase is not configured. Set <code className="text-xs">SUPABASE_URL</code> and{" "}
-              <code className="text-xs">SUPABASE_ANON_KEY</code> in Vercel (or local{" "}
-              <code className="text-xs">.env</code>), then redeploy.
-            </p>
-          )}
 
           <form className="mt-8 space-y-4" onSubmit={handleSubmit}>
             <div className="space-y-2">

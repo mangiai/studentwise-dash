@@ -40,28 +40,53 @@ async function requireAdminUser() {
   return user;
 }
 
+const TEST_STUDENT_LINKS: Record<string, string> = {
+  "sarah@studentwise.test": "2026-BSCS-0042",
+  "hassan@studentwise.test": "2026-BSCS-0043",
+  "maryam@studentwise.test": "2025-BSEE-0118",
+};
+
+function getStudentDataClient() {
+  if (process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    return getSupabaseServiceClient();
+  }
+  return getSupabaseServerClient();
+}
+
 async function getLinkedStudentId(userId: string, email?: string | null) {
+  const normalizedEmail = email?.trim().toLowerCase();
+
+  if (process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    const admin = getSupabaseServiceClient();
+
+    const { data: linked } = await admin
+      .from("students")
+      .select("id")
+      .eq("user_id", userId)
+      .maybeSingle();
+    if (linked?.id) return linked.id;
+
+    const studentRecordId = normalizedEmail ? TEST_STUDENT_LINKS[normalizedEmail] : undefined;
+    if (!studentRecordId) return null;
+
+    await admin.from("profiles").upsert({
+      id: userId,
+      full_name: normalizedEmail,
+      role: "student",
+    });
+
+    const { error } = await admin.from("students").update({ user_id: userId }).eq("id", studentRecordId);
+    if (error) {
+      console.error("Auto-link student failed:", error.message);
+    }
+    return studentRecordId;
+  }
+
   const supabase = getSupabaseServerClient();
   const { data } = await supabase.from("students").select("id").eq("user_id", userId).maybeSingle();
   if (data?.id) return data.id;
 
-  // Auto-link test/demo accounts when service role is available
-  const testLinks: Record<string, string> = {
-    "sarah@studentwise.test": "2026-BSCS-0042",
-    "hassan@studentwise.test": "2026-BSCS-0043",
-    "maryam@studentwise.test": "2025-BSEE-0118",
-  };
-
-  const studentRecordId = email ? testLinks[email] : undefined;
-  if (!studentRecordId || !process.env.SUPABASE_SERVICE_ROLE_KEY) return null;
-
-  const admin = getSupabaseServiceClient();
-  const { error } = await admin.from("students").update({ user_id: userId }).eq("id", studentRecordId);
-  if (error) {
-    console.error("Auto-link student failed:", error.message);
-    return null;
-  }
-  return studentRecordId;
+  return normalizedEmail ? (TEST_STUDENT_LINKS[normalizedEmail] ?? null) : null;
 }
 
 // ─── Dashboard ───────────────────────────────────────────────────────────────
@@ -123,13 +148,14 @@ export const fetchPortalDashboard = createServerFn({ method: "GET" }).handler(as
     return { configured: true as const, data: { role, stats: null, courseDist: [], upcoming: [], student: null } };
   }
 
-  const { data: student } = await supabase
+  const db = getStudentDataClient();
+  const { data: student } = await db
     .from("students")
     .select("id, name, gpa, credits_completed, credits_required, semester")
     .eq("id", studentId)
     .single();
 
-  const { data: enrollmentRows } = await supabase
+  const { data: enrollmentRows } = await db
     .from("enrollments")
     .select(`
       id, semester,
@@ -192,8 +218,8 @@ export const fetchStudentCourses = createServerFn({ method: "GET" }).handler(asy
   const studentId = await getLinkedStudentId(user.id, user.email);
   if (!studentId) return { configured: true as const, courses: [] };
 
-  const supabase = getSupabaseServerClient();
-  const { data, error } = await supabase
+  const db = getStudentDataClient();
+  const { data, error } = await db
     .from("enrollments")
     .select(`
       courses ( id, name, credits, status, teachers ( name ) ),
@@ -203,7 +229,7 @@ export const fetchStudentCourses = createServerFn({ method: "GET" }).handler(asy
     .eq("semester", "Spring 2026");
 
   if (error) {
-    console.error("fetchStudentCourses:", error.message);
+    console.error("fetchStudentCourses:", error.message, { studentId });
     return { configured: true as const, courses: [] as const };
   }
 
@@ -230,8 +256,8 @@ export const fetchStudentAttendance = createServerFn({ method: "GET" }).handler(
   const studentId = await getLinkedStudentId(user.id, user.email);
   if (!studentId) return { configured: true as const, rows: [], summary: null };
 
-  const supabase = getSupabaseServerClient();
-  const { data, error } = await supabase
+  const db = getStudentDataClient();
+  const { data, error } = await db
     .from("enrollments")
     .select(`
       courses ( id, name ),
@@ -241,7 +267,7 @@ export const fetchStudentAttendance = createServerFn({ method: "GET" }).handler(
     .eq("semester", "Spring 2026");
 
   if (error) {
-    console.error("fetchStudentAttendance:", error.message);
+    console.error("fetchStudentAttendance:", error.message, { studentId });
     return { configured: true as const, rows: [] as const, summary: null };
   }
 
@@ -277,16 +303,16 @@ export const fetchStudentFees = createServerFn({ method: "GET" }).handler(async 
   const studentId = await getLinkedStudentId(user.id, user.email);
   if (!studentId) return { configured: true as const, fees: null, history: [] };
 
-  const supabase = getSupabaseServerClient();
+  const db = getStudentDataClient();
   const [{ data: semesterFee }, { data: transactions }] = await Promise.all([
-    supabase
+    db
       .from("semester_fees")
       .select("*")
       .eq("student_id", studentId)
       .order("semester", { ascending: false })
       .limit(1)
       .maybeSingle(),
-    supabase
+    db
       .from("fee_transactions")
       .select("*")
       .eq("student_id", studentId)
@@ -382,14 +408,14 @@ export const fetchStudentResults = createServerFn({ method: "GET" }).handler(asy
   const studentId = await getLinkedStudentId(user.id, user.email);
   if (!studentId) return { configured: true as const, semesters: [], student: null };
 
-  const supabase = getSupabaseServerClient();
+  const db = getStudentDataClient();
   const [{ data: student }, { data: grades }] = await Promise.all([
-    supabase
+    db
       .from("students")
       .select("gpa, credits_completed, credits_required")
       .eq("id", studentId)
       .single(),
-    supabase
+    db
       .from("course_grades")
       .select("semester, grade, grade_points, courses ( id, name, credits )")
       .eq("student_id", studentId)

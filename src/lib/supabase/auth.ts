@@ -111,8 +111,17 @@ export const signIn = createServerFn({ method: "POST" })
 
     if (userId && process.env.SUPABASE_SERVICE_ROLE_KEY) {
       const admin = getSupabaseServiceClient();
-      const studentId = testStudentLinks[data.email];
-      const teacherId = testTeacherLinks[data.email];
+      const normalizedEmail = data.email.trim().toLowerCase();
+      const studentId = testStudentLinks[normalizedEmail];
+      const teacherId = testTeacherLinks[normalizedEmail];
+
+      if (studentId || teacherId) {
+        await admin.from("profiles").upsert({
+          id: userId,
+          full_name: normalizedEmail,
+          role: studentId ? "student" : "teacher",
+        });
+      }
 
       if (studentId) {
         await admin.from("students").update({ user_id: userId }).eq("id", studentId);

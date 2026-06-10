@@ -202,7 +202,10 @@ export const fetchStudentCourses = createServerFn({ method: "GET" }).handler(asy
     .eq("student_id", studentId)
     .eq("semester", "Spring 2026");
 
-  if (error) throw new Error(error.message);
+  if (error) {
+    console.error("fetchStudentCourses:", error.message);
+    return { configured: true as const, courses: [] as const };
+  }
 
   const courses = (data ?? []).map((row) => ({
     name: row.courses?.name ?? "Course",
@@ -237,7 +240,10 @@ export const fetchStudentAttendance = createServerFn({ method: "GET" }).handler(
     .eq("student_id", studentId)
     .eq("semester", "Spring 2026");
 
-  if (error) throw new Error(error.message);
+  if (error) {
+    console.error("fetchStudentAttendance:", error.message);
+    return { configured: true as const, rows: [] as const, summary: null };
+  }
 
   const rows = (data ?? []).map((row) => ({
     course: row.courses?.name ?? "Course",
@@ -325,24 +331,44 @@ export const fetchStudentFees = createServerFn({ method: "GET" }).handler(async 
 export const fetchTeachersDirectory = createServerFn({ method: "GET" }).handler(async () => {
   if (!isSupabaseServerConfigured()) return { configured: false as const, teachers: [] };
 
-  const supabase = getSupabaseServerClient();
-  const { data, error } = await supabase
-    .from("teachers")
-    .select("id, name, courses_count, status, departments ( name )")
-    .order("name");
+  try {
+    const supabase = getSupabaseServerClient();
+    let { data, error } = await supabase
+      .from("teachers")
+      .select("id, name, courses_count, status, departments ( name )")
+      .order("name");
 
-  if (error) throw new Error(error.message);
+    if (error) {
+      const fallback = await supabase
+        .from("teachers")
+        .select("id, name, courses_count, status")
+        .order("name");
+      if (fallback.error) {
+        console.error("fetchTeachersDirectory:", fallback.error.message);
+        return { configured: true as const, teachers: [] as const };
+      }
+      data = fallback.data as typeof data;
+    }
 
-  const teachers = (data ?? []).map((t) => ({
-    id: t.id,
-    name: t.name,
-    dept: t.departments?.name ?? "—",
-    courses: t.courses_count,
-    email: `${t.name.toLowerCase().replace(/[^a-z]/g, ".").replace(/\.+/g, ".")}@university.edu`,
-    status: t.status,
-  }));
+    const teachers = (data ?? []).map((t) => {
+      const dept =
+        t.departments && typeof t.departments === "object" && "name" in t.departments
+          ? String((t.departments as { name: string }).name)
+          : "—";
+      return {
+        id: t.id,
+        name: t.name ?? "Unknown",
+        dept,
+        courses: t.courses_count ?? 0,
+        status: t.status ?? "Active",
+      };
+    });
 
-  return { configured: true as const, teachers };
+    return { configured: true as const, teachers };
+  } catch (err) {
+    console.error("fetchTeachersDirectory:", err);
+    return { configured: true as const, teachers: [] as const };
+  }
 });
 
 // ─── Results / grades ────────────────────────────────────────────────────────
@@ -405,25 +431,33 @@ export const fetchNotifications = createServerFn({ method: "GET" }).handler(asyn
   const user = await getSessionUser();
   if (!user) return { configured: true as const, notifications: [] };
 
-  const supabase = getSupabaseServerClient();
-  const { data, error } = await supabase
-    .from("notifications")
-    .select("id, type, title, body, read, created_at")
-    .eq("user_id", user.id)
-    .order("created_at", { ascending: false });
+  try {
+    const supabase = getSupabaseServerClient();
+    const { data, error } = await supabase
+      .from("notifications")
+      .select("id, type, title, body, read, created_at")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false });
 
-  if (error) throw new Error(error.message);
+    if (error) {
+      console.error("fetchNotifications:", error.message);
+      return { configured: true as const, notifications: [] as const };
+    }
 
-  const notifications = (data ?? []).map((n) => ({
-    id: n.id,
-    type: n.type,
-    title: n.title,
-    body: n.body,
-    read: n.read,
-    time: formatRelativeTime(n.created_at),
-  }));
+    const notifications = (data ?? []).map((n) => ({
+      id: n.id,
+      type: n.type,
+      title: n.title,
+      body: n.body,
+      read: n.read,
+      time: formatRelativeTime(n.created_at),
+    }));
 
-  return { configured: true as const, notifications };
+    return { configured: true as const, notifications };
+  } catch (err) {
+    console.error("fetchNotifications:", err);
+    return { configured: true as const, notifications: [] as const };
+  }
 });
 
 export const markNotificationsRead = createServerFn({ method: "POST" }).handler(async () => {

@@ -28,7 +28,7 @@ const iconMap = {
 
 function Notifications() {
   const router = useRouter();
-  const { notifications } = Route.useLoaderData();
+  const { configured, notifications } = Route.useLoaderData();
   const unread = notifications.filter((n) => !n.read).length;
 
   async function handleMarkAllRead() {
@@ -54,8 +54,14 @@ function Notifications() {
       </div>
 
       <div className="space-y-3">
+        {!configured && (
+          <p className="text-sm text-muted-foreground">Supabase is not connected.</p>
+        )}
         {notifications.length === 0 && (
-          <p className="text-sm text-muted-foreground">No notifications yet.</p>
+          <p className="text-sm text-muted-foreground">
+            No notifications yet. If you expected alerts, run{" "}
+            <code className="text-xs bg-muted px-1 rounded">supabase/seed-cloud-complete.sql</code> in the Supabase SQL Editor.
+          </p>
         )}
         {notifications.map((n) => {
           const Icon = iconMap[n.type as keyof typeof iconMap] ?? Bell;

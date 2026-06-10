@@ -19,21 +19,34 @@ export const Route = createFileRoute("/teachers")({
 });
 
 function Teachers() {
-  const { teachers } = Route.useLoaderData();
+  const { configured, teachers } = Route.useLoaderData();
 
   return (
     <AppLayout title="Faculty Directory" subtitle="Browse teachers from the live university database">
+      {!configured && (
+        <p className="text-sm text-muted-foreground mb-4">Supabase is not connected.</p>
+      )}
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         {teachers.length === 0 && (
-          <p className="text-sm text-muted-foreground col-span-full">No teachers in database. Run seed.sql.</p>
+          <p className="text-sm text-muted-foreground col-span-full">
+            No teachers found. Run the seed script in Supabase SQL Editor (see supabase/seed-cloud-complete.sql).
+          </p>
         )}
-        {teachers.map((t) => (
+        {teachers.map((t) => {
+          const initials = (t.name ?? "?")
+            .split(" ")
+            .filter(Boolean)
+            .slice(-2)
+            .map((p: string) => p[0])
+            .join("")
+            .toUpperCase();
+          return (
           <Card key={t.id}>
             <CardContent className="p-5 space-y-4">
               <div className="flex items-start gap-3">
                 <Avatar className="size-12">
                   <AvatarFallback className="bg-primary/10 text-primary text-sm font-semibold">
-                    {t.name.split(" ").slice(-2).map((p) => p[0]).join("")}
+                    {initials}
                   </AvatarFallback>
                 </Avatar>
                 <div className="flex-1 min-w-0">
@@ -50,7 +63,8 @@ function Teachers() {
               <Button variant="outline" size="sm" className="w-full">View profile</Button>
             </CardContent>
           </Card>
-        ))}
+          );
+        })}
       </div>
     </AppLayout>
   );

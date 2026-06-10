@@ -99,7 +99,9 @@ function Login() {
 
           {!supabaseReady && (
             <p className="mt-4 text-sm text-amber-600 bg-amber-500/10 border border-amber-500/20 rounded-md p-3">
-              Supabase env vars missing. Copy `.env.example` to `.env` and add your keys.
+              Supabase is not configured. Set <code className="text-xs">SUPABASE_URL</code> and{" "}
+              <code className="text-xs">SUPABASE_ANON_KEY</code> in Vercel (or local{" "}
+              <code className="text-xs">.env</code>), then redeploy.
             </p>
           )}
 

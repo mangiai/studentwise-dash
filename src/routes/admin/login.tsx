@@ -98,7 +98,7 @@ function AdminLogin() {
 
           {!supabaseReady && (
             <p className="mt-4 text-sm text-amber-600 bg-amber-500/10 border border-amber-500/20 rounded-md p-3">
-              Supabase env vars missing. Copy `.env.example` to `.env` and add your keys.
+              Supabase is not configured. Set SUPABASE_URL and SUPABASE_ANON_KEY in Vercel, then redeploy.
             </p>
           )}
 

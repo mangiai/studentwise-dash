@@ -12,6 +12,7 @@ import appCss from "../styles.css?url";
 import { appHead } from "@/lib/seo";
 import type { AuthUser } from "@/lib/auth-types";
 import { getAuthUser } from "@/lib/supabase/auth";
+import { getSupabasePublicConfigFromEnv } from "@/lib/supabase/public-config";
 import { Toaster } from "@/components/ui/sonner";
 
 function NotFoundComponent() {
@@ -117,10 +118,19 @@ export const Route = createRootRouteWithContext<{
 });
 
 function RootShell({ children }: { children: React.ReactNode }) {
+  const supabaseConfig = getSupabasePublicConfigFromEnv();
+
   return (
     <html lang="en">
       <head>
         <HeadContent />
+        {supabaseConfig && (
+          <script
+            dangerouslySetInnerHTML={{
+              __html: `window.__SUPABASE_CONFIG__=${JSON.stringify(supabaseConfig)};`,
+            }}
+          />
+        )}
       </head>
       <body>
         {children}

@@ -1,24 +1,23 @@
 import { createBrowserClient } from "@supabase/ssr";
 import type { Database } from "@/lib/database.types";
+import { getSupabasePublicConfig, isSupabasePublicConfigured } from "@/lib/supabase/public-config";
 
 let browserClient: ReturnType<typeof createBrowserClient<Database>> | undefined;
 
 export function getSupabaseBrowserClient() {
   if (browserClient) return browserClient;
 
-  const url = import.meta.env.VITE_SUPABASE_URL;
-  const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-
-  if (!url || !anonKey) {
-    throw new Error("Missing VITE_SUPABASE_URL or VITE_SUPABASE_ANON_KEY");
+  const config = getSupabasePublicConfig();
+  if (!config) {
+    throw new Error("Missing Supabase URL or anon key");
   }
 
-  browserClient = createBrowserClient<Database>(url, anonKey);
+  browserClient = createBrowserClient<Database>(config.url, config.anonKey);
   return browserClient;
 }
 
 export function isSupabaseConfigured() {
-  return Boolean(import.meta.env.VITE_SUPABASE_URL && import.meta.env.VITE_SUPABASE_ANON_KEY);
+  return isSupabasePublicConfigured();
 }
 
 export async function signInWithEmail(email: string, password: string) {

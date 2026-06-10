@@ -1,9 +1,9 @@
--- ═══════════════════════════════════════════════════════════════════════════
--- StudentWise — COMPLETE cloud seed (run once in Supabase SQL Editor)
--- Dashboard → SQL Editor → New query → Paste → Run
--- ═══════════════════════════════════════════════════════════════════════════
+-- StudentWise complete cloud seed
+-- Supabase Dashboard -> SQL Editor -> New query -> paste ALL of this file -> Run
+-- IMPORTANT: First line must start with -- (two dashes). Do not add = or other characters before it.
+-- Requires: run migrations first (npm run db:push) OR initial schema already applied.
 
--- ── 0. Ensure notifications + grades tables exist (safe to re-run) ────────
+-- STEP 0: notifications + grades tables (safe to re-run)
 
 CREATE TABLE IF NOT EXISTS public.course_grades (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -66,7 +66,7 @@ ON public.notifications FOR ALL TO authenticated
 USING (EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = auth.uid() AND p.role = 'admin'))
 WITH CHECK (EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = auth.uid() AND p.role = 'admin'));
 
--- ── 1. Demo data ──────────────────────────────────────────────────────────
+-- STEP 1: demo data
 
 INSERT INTO public.departments (id, name, code) VALUES
   ('11111111-1111-1111-1111-111111111101', 'Computer Science', 'CS'),
@@ -135,12 +135,11 @@ INSERT INTO public.semester_fees (student_id, semester, total_amount_pkr, amount
 ON CONFLICT (student_id, semester) DO NOTHING;
 
 INSERT INTO public.fee_transactions (student_id, transaction_date, description, payment_method, amount_pkr, status) VALUES
-  ('2026-BSCS-0042', '2026-08-12', 'Spring ''26 — Installment 2', 'Bank Transfer', 49000, 'Paid'),
-  ('2026-BSCS-0042', '2026-03-04', 'Spring ''26 — Installment 1', 'Credit Card', 49000, 'Paid'),
-  ('2026-BSCS-0042', '2025-10-18', 'Fall ''25 — Full Payment', 'Bank Transfer', 98000, 'Paid'),
-  ('2026-BSCS-0043', '2026-03-04', 'Spring ''26 — Installment 1', 'Bank Transfer', 49000, 'Paid'),
-  ('2025-BSEE-0118', '2026-03-04', 'Spring ''26 — Full Payment', 'Credit Card', 98000, 'Paid')
-ON CONFLICT DO NOTHING;
+  ('2026-BSCS-0042', '2026-08-12', 'Spring 26 Installment 2', 'Bank Transfer', 49000, 'Paid'),
+  ('2026-BSCS-0042', '2026-03-04', 'Spring 26 Installment 1', 'Credit Card', 49000, 'Paid'),
+  ('2026-BSCS-0042', '2025-10-18', 'Fall 25 Full Payment', 'Bank Transfer', 98000, 'Paid'),
+  ('2026-BSCS-0043', '2026-03-04', 'Spring 26 Installment 1', 'Bank Transfer', 49000, 'Paid'),
+  ('2025-BSEE-0118', '2026-03-04', 'Spring 26 Full Payment', 'Credit Card', 98000, 'Paid');
 
 INSERT INTO public.course_grades (student_id, course_id, semester, grade, grade_points) VALUES
   ('2026-BSCS-0042', 'CS-304', 'Fall 2025', 'A', 12.0),
@@ -151,7 +150,7 @@ INSERT INTO public.course_grades (student_id, course_id, semester, grade, grade_
   ('2026-BSCS-0042', 'CS-411', 'Spring 2025', 'A', 12.0)
 ON CONFLICT (student_id, course_id, semester) DO NOTHING;
 
--- ── 2. Link auth users → student/teacher records (works with any user UUID) ─
+-- STEP 2: link auth users to student/teacher records
 
 UPDATE public.students s
 SET user_id = u.id, name = 'Sarah Ahmed'
@@ -173,7 +172,6 @@ SET user_id = u.id, name = 'Dr. Aamir Khan'
 FROM auth.users u
 WHERE u.email = 'teacher@studentwise.test' AND t.id = 'FAC-2018-014';
 
--- Sync profiles for existing auth users
 INSERT INTO public.profiles (id, full_name, role)
 SELECT u.id,
   COALESCE(u.raw_user_meta_data->>'full_name', u.email),
@@ -191,18 +189,18 @@ ON CONFLICT (id) DO UPDATE SET
   role = EXCLUDED.role,
   updated_at = now();
 
--- ── 3. Notifications (linked by email, not fixed UUID) ─────────────────────
+-- STEP 3: notifications
 
 INSERT INTO public.notifications (user_id, type, title, body, read)
 SELECT u.id, v.type, v.title, v.body, v.read
 FROM auth.users u
 CROSS JOIN (VALUES
-  ('sarah@studentwise.test', 'fee',         'Fee payment reminder',       'Fall 2026 installment is due by Sep 15, 2026.', false),
-  ('sarah@studentwise.test', 'attendance',  'Short attendance alert',     'Operating Systems attendance is below 75%.', false),
-  ('sarah@studentwise.test', 'course',      'New assignment posted',      'Software Engineering — Project milestone 2 is now live.', true),
-  ('sarah@studentwise.test', 'announcement','Spring break schedule',      'Campus will be closed March 20–27 for spring break.', true),
-  ('hassan@studentwise.test','fee',         'Pending fee notice',         'Spring 2026 second installment is pending.', false),
-  ('admin@studentwise.test', 'announcement','Admin: enrollment window',   'Fall 2026 enrollment opens next Monday.', false)
+  ('sarah@studentwise.test', 'fee', 'Fee payment reminder', 'Fall 2026 installment is due by Sep 15, 2026.', false),
+  ('sarah@studentwise.test', 'attendance', 'Short attendance alert', 'Operating Systems attendance is below 75%.', false),
+  ('sarah@studentwise.test', 'course', 'New assignment posted', 'Software Engineering project milestone 2 is now live.', true),
+  ('sarah@studentwise.test', 'announcement', 'Spring break schedule', 'Campus will be closed March 20-27 for spring break.', true),
+  ('hassan@studentwise.test', 'fee', 'Pending fee notice', 'Spring 2026 second installment is pending.', false),
+  ('admin@studentwise.test', 'announcement', 'Admin enrollment window', 'Fall 2026 enrollment opens next Monday.', false)
 ) AS v(email, type, title, body, read)
 WHERE u.email = v.email
 AND NOT EXISTS (
@@ -210,7 +208,7 @@ AND NOT EXISTS (
   WHERE n.user_id = u.id AND n.title = v.title
 );
 
--- ── 4. Verify (should return rows for Sarah) ──────────────────────────────
+-- STEP 4: verify (Sarah should show 6 enrollments)
 
 SELECT
   u.email,

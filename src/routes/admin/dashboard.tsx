@@ -140,7 +140,7 @@ function Admin() {
   const [enrollSelect, setEnrollSelect] = useState("");
 
   const [manageStudentId, setManageStudentId] = useState<string | null>(null);
-  const [assignCourseSelect, setAssignCourseSelect] = useState("");
+  const [studentCourseSelect, setStudentCourseSelect] = useState("");
 
   const [assignTeacherId, setAssignTeacherId] = useState<string | null>(null);
   const [assignCourseSelect, setAssignCourseSelect] = useState("");
@@ -359,12 +359,12 @@ function Admin() {
   }
 
   async function assignCourseToStudent() {
-    if (!manageStudentId || !assignCourseSelect) {
+    if (!manageStudentId || !studentCourseSelect) {
       toast.error("Select a course to assign");
       return;
     }
-    await enrollStudentInCourse(assignCourseSelect, manageStudentId);
-    setAssignCourseSelect("");
+    await enrollStudentInCourse(studentCourseSelect, manageStudentId);
+    setStudentCourseSelect("");
   }
 
   async function assignCourseToTeacher() {
@@ -502,7 +502,7 @@ function Admin() {
                           variant="outline"
                           onClick={() => {
                             setManageStudentId(s.id);
-                            setAssignCourseSelect("");
+                            setStudentCourseSelect("");
                           }}
                         >
                           Assign Courses
@@ -983,7 +983,7 @@ function Admin() {
             <div className="grid gap-2">
               <Label>Add a course</Label>
               <div className="flex gap-2">
-                <Select value={assignCourseSelect} onValueChange={setAssignCourseSelect}>
+                <Select value={studentCourseSelect} onValueChange={setStudentCourseSelect}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select course" />
                   </SelectTrigger>
@@ -997,7 +997,7 @@ function Admin() {
                       ))}
                   </SelectContent>
                 </Select>
-                <Button type="button" onClick={assignCourseToStudent} disabled={!assignCourseSelect}>
+                <Button type="button" onClick={assignCourseToStudent} disabled={!studentCourseSelect}>
                   Assign
                 </Button>
               </div>

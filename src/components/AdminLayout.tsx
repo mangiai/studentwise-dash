@@ -9,6 +9,7 @@ import {
   ClipboardList,
   Bell,
   Wallet,
+  CalendarCheck2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -17,7 +18,7 @@ import { APP_LOGO_SHORT, APP_NAME } from "@/lib/brand";
 import { useAuthUser } from "@/hooks/use-auth";
 import { signOut } from "@/lib/supabase/auth";
 import { toast } from "sonner";
-import { CURRENT_SEMESTER } from "@/lib/constants";
+import { ATTENDANCE_TERM, CURRENT_SEMESTER } from "@/lib/constants";
 
 const nav = [
   { to: "/admin/dashboard", label: "Overview", icon: LayoutDashboard, exact: true },
@@ -25,6 +26,7 @@ const nav = [
   { to: "/admin/teachers", label: "Teachers", icon: GraduationCap },
   { to: "/admin/courses", label: "Courses", icon: BookOpen },
   { to: "/admin/enrollments", label: "Enrollments", icon: ClipboardList },
+  { to: "/admin/attendance", label: "Attendance", icon: CalendarCheck2 },
   { to: "/admin/fees", label: "Fees & Challans", icon: Wallet },
   { to: "/admin/notifications", label: "Notifications", icon: Bell },
 ];
@@ -125,7 +127,7 @@ export function AdminLayout({ children, title, subtitle }: { children: React.Rea
               {subtitle && <p className="text-sm text-muted-foreground mt-1">{subtitle}</p>}
             </div>
             <Badge variant="outline" className="bg-card">
-              {CURRENT_SEMESTER}
+              {path.startsWith("/admin/attendance") ? ATTENDANCE_TERM : CURRENT_SEMESTER}
             </Badge>
           </div>
           {children}

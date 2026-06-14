@@ -34,6 +34,7 @@ import { Route as AdminFeesRouteImport } from './routes/admin/fees'
 import { Route as AdminEnrollmentsRouteImport } from './routes/admin/enrollments'
 import { Route as AdminDashboardRouteImport } from './routes/admin/dashboard'
 import { Route as AdminCoursesRouteImport } from './routes/admin/courses'
+import { Route as AdminAttendanceRouteImport } from './routes/admin/attendance'
 
 const TeachersRoute = TeachersRouteImport.update({
   id: '/teachers',
@@ -160,6 +161,11 @@ const AdminCoursesRoute = AdminCoursesRouteImport.update({
   path: '/courses',
   getParentRoute: () => AdminRouteRoute,
 } as any)
+const AdminAttendanceRoute = AdminAttendanceRouteImport.update({
+  id: '/attendance',
+  path: '/attendance',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -178,6 +184,7 @@ export interface FileRoutesByFullPath {
   '/signup': typeof SignupRoute
   '/teacher': typeof TeacherRoute
   '/teachers': typeof TeachersRoute
+  '/admin/attendance': typeof AdminAttendanceRoute
   '/admin/courses': typeof AdminCoursesRoute
   '/admin/dashboard': typeof AdminDashboardRoute
   '/admin/enrollments': typeof AdminEnrollmentsRoute
@@ -204,6 +211,7 @@ export interface FileRoutesByTo {
   '/signup': typeof SignupRoute
   '/teacher': typeof TeacherRoute
   '/teachers': typeof TeachersRoute
+  '/admin/attendance': typeof AdminAttendanceRoute
   '/admin/courses': typeof AdminCoursesRoute
   '/admin/dashboard': typeof AdminDashboardRoute
   '/admin/enrollments': typeof AdminEnrollmentsRoute
@@ -232,6 +240,7 @@ export interface FileRoutesById {
   '/signup': typeof SignupRoute
   '/teacher': typeof TeacherRoute
   '/teachers': typeof TeachersRoute
+  '/admin/attendance': typeof AdminAttendanceRoute
   '/admin/courses': typeof AdminCoursesRoute
   '/admin/dashboard': typeof AdminDashboardRoute
   '/admin/enrollments': typeof AdminEnrollmentsRoute
@@ -261,6 +270,7 @@ export interface FileRouteTypes {
     | '/signup'
     | '/teacher'
     | '/teachers'
+    | '/admin/attendance'
     | '/admin/courses'
     | '/admin/dashboard'
     | '/admin/enrollments'
@@ -287,6 +297,7 @@ export interface FileRouteTypes {
     | '/signup'
     | '/teacher'
     | '/teachers'
+    | '/admin/attendance'
     | '/admin/courses'
     | '/admin/dashboard'
     | '/admin/enrollments'
@@ -314,6 +325,7 @@ export interface FileRouteTypes {
     | '/signup'
     | '/teacher'
     | '/teachers'
+    | '/admin/attendance'
     | '/admin/courses'
     | '/admin/dashboard'
     | '/admin/enrollments'
@@ -521,10 +533,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminCoursesRouteImport
       parentRoute: typeof AdminRouteRoute
     }
+    '/admin/attendance': {
+      id: '/admin/attendance'
+      path: '/attendance'
+      fullPath: '/admin/attendance'
+      preLoaderRoute: typeof AdminAttendanceRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
   }
 }
 
 interface AdminRouteRouteChildren {
+  AdminAttendanceRoute: typeof AdminAttendanceRoute
   AdminCoursesRoute: typeof AdminCoursesRoute
   AdminDashboardRoute: typeof AdminDashboardRoute
   AdminEnrollmentsRoute: typeof AdminEnrollmentsRoute
@@ -537,6 +557,7 @@ interface AdminRouteRouteChildren {
 }
 
 const AdminRouteRouteChildren: AdminRouteRouteChildren = {
+  AdminAttendanceRoute: AdminAttendanceRoute,
   AdminCoursesRoute: AdminCoursesRoute,
   AdminDashboardRoute: AdminDashboardRoute,
   AdminEnrollmentsRoute: AdminEnrollmentsRoute,

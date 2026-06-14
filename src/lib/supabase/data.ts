@@ -7,7 +7,7 @@ import {
 } from "@/lib/supabase/server";
 import type { AuthUser, UserRole } from "@/lib/auth-types";
 import { isStaffRole } from "@/lib/auth-types";
-import { CURRENT_SEMESTER } from "@/lib/constants";
+import { CURRENT_SEMESTER, ATTENDANCE_TERM } from "@/lib/constants";
 
 async function getSessionUser() {
   const supabase = getSupabaseServerClient();
@@ -274,37 +274,103 @@ export const fetchStudentCourses = createServerFn({ method: "GET" }).handler(asy
 
 // ─── Attendance ──────────────────────────────────────────────────────────────
 
-export const fetchStudentAttendance = createServerFn({ method: "GET" }).handler(async () => {
-  if (!isSupabaseServerConfigured()) return { configured: false as const, rows: [], summary: null };
-
-  const user = await getSessionUser();
-  if (!user) return { configured: true as const, rows: [], summary: null };
-
-  const studentId = await getLinkedStudentId(user.id, user.email);
-  if (!studentId) return { configured: true as const, rows: [], summary: null };
-
+async function fetchEnrollmentAttendanceRows(studentId: string) {
   const db = getStudentDataClient();
-  const { data, error } = await db
+  const { data: enrollments } = await db
     .from("enrollments")
-    .select(`
-      courses ( id, name ),
-      attendance_records ( total_classes, classes_attended, percentage )
-    `)
+    .select("id, course_id, courses ( id, name )")
     .eq("student_id", studentId)
     .eq("semester", CURRENT_SEMESTER);
 
-  if (error) {
-    console.error("fetchStudentAttendance:", error.message, { studentId });
-    return { configured: true as const, rows: [] as const, summary: null };
+  if (!enrollments?.length) return [];
+
+  const enrollmentIds = enrollments.map((e) => e.id);
+  const { data: marks } = await db
+    .from("session_attendance")
+    .select("enrollment_id, present, class_sessions ( id, session_date, start_time, end_time, room, course_id )")
+    .in("enrollment_id", enrollmentIds);
+
+  const byEnrollment = new Map<string, { total: number; attended: number; sessions: typeof marks }>();
+  for (const e of enrollments) {
+    byEnrollment.set(e.id, { total: 0, attended: 0, sessions: [] });
+  }
+  for (const mark of marks ?? []) {
+    const bucket = byEnrollment.get(mark.enrollment_id);
+    if (!bucket) continue;
+    bucket.total += 1;
+    if (mark.present) bucket.attended += 1;
+    bucket.sessions.push(mark);
   }
 
-  const rows = (data ?? []).map((row) => ({
-    course: row.courses?.name ?? "Course",
-    code: row.courses?.id ?? "",
-    att: Number(row.attendance_records?.[0]?.percentage ?? 0),
-    classes: row.attendance_records?.[0]?.total_classes ?? 0,
-    attended: row.attendance_records?.[0]?.classes_attended ?? 0,
-  }));
+  return enrollments.map((e) => {
+    const stats = byEnrollment.get(e.id) ?? { total: 0, attended: 0, sessions: [] };
+    const att =
+      stats.total > 0 ? Math.round((stats.attended / stats.total) * 100) : 0;
+    return {
+      enrollmentId: e.id,
+      course: e.courses?.name ?? "Course",
+      code: e.courses?.id ?? e.course_id,
+      att,
+      classes: stats.total,
+      attended: stats.attended,
+      sessions: (stats.sessions ?? []).map((m) => ({
+        id: m.class_sessions?.id ?? "",
+        date: m.class_sessions?.session_date ?? "",
+        startTime: m.class_sessions?.start_time?.slice(0, 5) ?? "",
+        endTime: m.class_sessions?.end_time?.slice(0, 5) ?? "",
+        room: m.class_sessions?.room ?? "TBA",
+        present: m.present,
+        courseCode: e.courses?.id ?? "",
+        courseName: e.courses?.name ?? "Course",
+      })),
+    };
+  });
+}
+
+export const fetchStudentAttendance = createServerFn({ method: "GET" }).handler(async () => {
+  if (!isSupabaseServerConfigured()) return { configured: false as const, rows: [], summary: null, sessions: [], term: ATTENDANCE_TERM };
+
+  const user = await getSessionUser();
+  if (!user) return { configured: true as const, rows: [], summary: null, sessions: [], term: ATTENDANCE_TERM };
+
+  const studentId = await getLinkedStudentId(user.id, user.email);
+  if (!studentId) return { configured: true as const, rows: [], summary: null, sessions: [], term: ATTENDANCE_TERM };
+
+  let courseRows = await fetchEnrollmentAttendanceRows(studentId);
+
+  if (courseRows.every((r) => r.classes === 0)) {
+    const db = getStudentDataClient();
+    const { data, error } = await db
+      .from("enrollments")
+      .select(`
+        id,
+        courses ( id, name ),
+        attendance_records ( total_classes, classes_attended, percentage )
+      `)
+      .eq("student_id", studentId)
+      .eq("semester", CURRENT_SEMESTER);
+
+    if (!error && data?.length) {
+      courseRows = data.map((row) => ({
+        enrollmentId: row.id,
+        course: row.courses?.name ?? "Course",
+        code: row.courses?.id ?? "",
+        att: Number(row.attendance_records?.[0]?.percentage ?? 0),
+        classes: row.attendance_records?.[0]?.total_classes ?? 0,
+        attended: row.attendance_records?.[0]?.classes_attended ?? 0,
+        sessions: [],
+      }));
+    }
+  }
+
+  const rows = courseRows
+    .filter((r) => r.att > 0)
+    .map(({ enrollmentId: _e, sessions: _s, ...row }) => row);
+
+  const allSessions = courseRows
+    .flatMap((r) => r.sessions)
+    .filter((s) => s.id && s.date)
+    .sort((a, b) => `${a.date}${a.startTime}`.localeCompare(`${b.date}${b.startTime}`));
 
   const overall =
     rows.length > 0 ? Math.round(rows.reduce((a, r) => a + r.att, 0) / rows.length) : 0;
@@ -315,9 +381,119 @@ export const fetchStudentAttendance = createServerFn({ method: "GET" }).handler(
   return {
     configured: true as const,
     rows,
+    sessions: allSessions,
+    term: ATTENDANCE_TERM,
     summary: { overall, totalClasses, totalAttended, shortCount },
   };
 });
+
+export const fetchAdminAttendance = createServerFn({ method: "GET" })
+  .validator((d: unknown) =>
+    z.object({ studentId: z.string().optional(), courseId: z.string().optional() }).parse(d ?? {}),
+  )
+  .handler(async ({ data }) => {
+    await requireStaffUser();
+    const admin = getSupabaseServiceClient();
+
+    const [{ data: students }, { data: courses }] = await Promise.all([
+      admin.from("students").select("id, name").order("name"),
+      admin.from("courses").select("id, name").order("name"),
+    ]);
+
+    if (!data.studentId) {
+      return {
+        students: students ?? [],
+        courses: courses ?? [],
+        sessions: [],
+        term: ATTENDANCE_TERM,
+      };
+    }
+
+    const { data: enrollments } = await admin
+      .from("enrollments")
+      .select("id, course_id, courses ( id, name )")
+      .eq("student_id", data.studentId)
+      .eq("semester", CURRENT_SEMESTER);
+
+    const filtered = data.courseId
+      ? (enrollments ?? []).filter((e) => e.course_id === data.courseId)
+      : (enrollments ?? []);
+
+    if (filtered.length === 0) {
+      return { students: students ?? [], courses: courses ?? [], sessions: [], term: ATTENDANCE_TERM };
+    }
+
+    const enrollmentIds = filtered.map((e) => e.id);
+    const { data: marks } = await admin
+      .from("session_attendance")
+      .select(`
+        id, enrollment_id, present,
+        class_sessions ( id, session_date, start_time, end_time, room, course_id, courses ( name ) )
+      `)
+      .in("enrollment_id", enrollmentIds);
+
+    const sessions = (marks ?? [])
+      .map((m) => ({
+        markId: m.id,
+        enrollmentId: m.enrollment_id,
+        present: m.present,
+        sessionId: m.class_sessions?.id ?? "",
+        date: m.class_sessions?.session_date ?? "",
+        startTime: m.class_sessions?.start_time?.slice(0, 5) ?? "",
+        endTime: m.class_sessions?.end_time?.slice(0, 5) ?? "",
+        room: m.class_sessions?.room ?? "TBA",
+        courseCode: m.class_sessions?.course_id ?? "",
+        courseName: m.class_sessions?.courses?.name ?? "Course",
+      }))
+      .sort((a, b) => `${a.date}${a.startTime}`.localeCompare(`${b.date}${b.startTime}`));
+
+    return { students: students ?? [], courses: courses ?? [], sessions, term: ATTENDANCE_TERM };
+  });
+
+export const adminUpdateSessionAttendance = createServerFn({ method: "POST" })
+  .validator((d: unknown) =>
+    z
+      .object({
+        markId: z.string().uuid(),
+        present: z.boolean(),
+      })
+      .parse(d),
+  )
+  .handler(async ({ data }) => {
+    await requireStaffUser();
+    const admin = getSupabaseServiceClient();
+
+    const { data: mark, error: fetchError } = await admin
+      .from("session_attendance")
+      .select("enrollment_id, class_sessions ( courses ( name ), session_date )")
+      .eq("id", data.markId)
+      .single();
+
+    if (fetchError || !mark) throw new Error(fetchError?.message ?? "Attendance mark not found");
+
+    const { error } = await admin
+      .from("session_attendance")
+      .update({ present: data.present, marked_at: new Date().toISOString() })
+      .eq("id", data.markId);
+
+    if (error) throw new Error(error.message);
+
+    const { data: student } = await admin
+      .from("enrollments")
+      .select("student_id")
+      .eq("id", mark.enrollment_id)
+      .single();
+
+    if (student?.student_id) {
+      await notifyStudentUser(admin, student.student_id, {
+        type: "attendance",
+        title: "Attendance updated",
+        body: `Your attendance for ${mark.class_sessions?.courses?.name ?? "a course"} on ${mark.class_sessions?.session_date ?? "a class"} was marked as ${data.present ? "Present" : "Absent"}.`,
+      });
+    }
+
+    return { ok: true as const };
+  });
 
 // ─── Fees ────────────────────────────────────────────────────────────────────
 

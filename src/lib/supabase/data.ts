@@ -186,35 +186,46 @@ export const fetchPortalDashboard = createServerFn({ method: "GET" }).handler(as
     .from("enrollments")
     .select(`
       id, semester,
-      courses ( id, name, credits, status, teachers ( name ) ),
-      attendance_records ( percentage, total_classes, classes_attended )
+      courses ( id, name, credits, status, teachers ( name ) )
     `)
     .eq("student_id", studentId)
     .eq("semester", CURRENT_SEMESTER);
 
-  const coursesList = (enrollmentRows ?? []).map((e) => {
-    const att = e.attendance_records?.[0];
-    return {
-      name: e.courses?.name ?? "Course",
-      code: e.courses?.id ?? "",
-      teacher: e.courses?.teachers?.name ?? "TBA",
-      credits: e.courses?.credits ?? 3,
-      att: Number(att?.percentage ?? 0),
-      status: e.courses?.status ?? "Ongoing",
-    };
-  });
+  const attendanceRows = await resolveStudentAttendanceCourseRows(studentId);
+  const attByCode = new Map(attendanceRows.map((r) => [r.code, r.att]));
+  const { overall: overallAtt } = summarizeStudentAttendance(attendanceRows);
 
-  const overallAtt =
-    coursesList.length > 0
-      ? Math.round(coursesList.reduce((a, c) => a + c.att, 0) / coursesList.length)
-      : 0;
-
-  const upcoming = coursesList.slice(0, 3).map((c, i) => ({
-    course: c.name,
-    time: ["09:00 – 10:30", "11:00 – 12:30", "14:00 – 15:30"][i] ?? "TBA",
-    room: ["Lab 204", "Room 105", "Room 302"][i] ?? "TBA",
-    teacher: c.teacher,
+  const coursesList = (enrollmentRows ?? []).map((e) => ({
+    name: e.courses?.name ?? "Course",
+    code: e.courses?.id ?? "",
+    teacher: e.courses?.teachers?.name ?? "TBA",
+    credits: e.courses?.credits ?? 3,
+    att: attByCode.get(e.courses?.id ?? "") ?? 0,
+    status: e.courses?.status ?? "Ongoing",
   }));
+
+  const upcomingFromSessions = attendanceRows
+    .flatMap((r) => r.sessions)
+    .filter((s) => s.id && s.date)
+    .sort((a, b) => `${a.date}${a.startTime}`.localeCompare(`${b.date}${b.startTime}`))
+    .slice(0, 3)
+    .map((s) => ({
+      course: s.courseName,
+      time: `${s.startTime} – ${s.endTime}`,
+      room: s.room,
+      teacher:
+        coursesList.find((c) => c.code === s.courseCode)?.teacher ?? "TBA",
+    }));
+
+  const upcoming =
+    upcomingFromSessions.length > 0
+      ? upcomingFromSessions
+      : coursesList.slice(0, 3).map((c, i) => ({
+          course: c.name,
+          time: ["09:00 – 10:30", "11:00 – 12:30", "14:00 – 15:30"][i] ?? "TBA",
+          room: ["Lab 204", "Room 105", "Room 302"][i] ?? "TBA",
+          teacher: c.teacher,
+        }));
 
   return {
     configured: true as const,
@@ -249,8 +260,7 @@ export const fetchStudentCourses = createServerFn({ method: "GET" }).handler(asy
   const { data, error } = await db
     .from("enrollments")
     .select(`
-      courses ( id, name, credits, status, teachers ( name ) ),
-      attendance_records ( percentage )
+      courses ( id, name, credits, status, teachers ( name ) )
     `)
     .eq("student_id", studentId)
     .eq("semester", CURRENT_SEMESTER);
@@ -260,12 +270,15 @@ export const fetchStudentCourses = createServerFn({ method: "GET" }).handler(asy
     return { configured: true as const, courses: [] as const };
   }
 
+  const attendanceRows = await resolveStudentAttendanceCourseRows(studentId);
+  const attByCode = new Map(attendanceRows.map((r) => [r.code, r.att]));
+
   const courses = (data ?? []).map((row) => ({
     name: row.courses?.name ?? "Course",
     code: row.courses?.id ?? "",
     teacher: row.courses?.teachers?.name ?? "TBA",
     credits: row.courses?.credits ?? 3,
-    att: Number(row.attendance_records?.[0]?.percentage ?? 0),
+    att: attByCode.get(row.courses?.id ?? "") ?? 0,
     status: row.courses?.status ?? "Ongoing",
   }));
 
@@ -336,15 +349,7 @@ async function fetchEnrollmentAttendanceRows(studentId: string) {
   });
 }
 
-export const fetchStudentAttendance = createServerFn({ method: "GET" }).handler(async () => {
-  if (!isSupabaseServerConfigured()) return { configured: false as const, rows: [], summary: null, sessions: [], term: ATTENDANCE_TERM };
-
-  const user = await getSessionUser();
-  if (!user) return { configured: true as const, rows: [], summary: null, sessions: [], term: ATTENDANCE_TERM };
-
-  const studentId = await getLinkedStudentId(user.id, user.email);
-  if (!studentId) return { configured: true as const, rows: [], summary: null, sessions: [], term: ATTENDANCE_TERM };
-
+async function resolveStudentAttendanceCourseRows(studentId: string) {
   let courseRows = await fetchEnrollmentAttendanceRows(studentId);
 
   if (courseRows.every((r) => r.classes === 0)) {
@@ -372,6 +377,33 @@ export const fetchStudentAttendance = createServerFn({ method: "GET" }).handler(
     }
   }
 
+  return courseRows;
+}
+
+function summarizeStudentAttendance(
+  courseRows: Awaited<ReturnType<typeof resolveStudentAttendanceCourseRows>>,
+) {
+  const active = courseRows.filter((r) => r.att > 0);
+  const overall =
+    active.length > 0 ? Math.round(active.reduce((a, r) => a + r.att, 0) / active.length) : 0;
+  const totalClasses = active.reduce((a, r) => a + r.classes, 0);
+  const totalAttended = active.reduce((a, r) => a + r.attended, 0);
+  const shortCount = active.filter((r) => r.att < 75).length;
+
+  return { overall, totalClasses, totalAttended, shortCount, active };
+}
+
+export const fetchStudentAttendance = createServerFn({ method: "GET" }).handler(async () => {
+  if (!isSupabaseServerConfigured()) return { configured: false as const, rows: [], summary: null, sessions: [], term: ATTENDANCE_TERM };
+
+  const user = await getSessionUser();
+  if (!user) return { configured: true as const, rows: [], summary: null, sessions: [], term: ATTENDANCE_TERM };
+
+  const studentId = await getLinkedStudentId(user.id, user.email);
+  if (!studentId) return { configured: true as const, rows: [], summary: null, sessions: [], term: ATTENDANCE_TERM };
+
+  let courseRows = await resolveStudentAttendanceCourseRows(studentId);
+
   const rows = courseRows
     .filter((r) => r.att > 0)
     .map(({ enrollmentId: _e, sessions: _s, ...row }) => row);
@@ -381,11 +413,7 @@ export const fetchStudentAttendance = createServerFn({ method: "GET" }).handler(
     .filter((s) => s.id && s.date)
     .sort((a, b) => `${a.date}${a.startTime}`.localeCompare(`${b.date}${b.startTime}`));
 
-  const overall =
-    rows.length > 0 ? Math.round(rows.reduce((a, r) => a + r.att, 0) / rows.length) : 0;
-  const totalClasses = rows.reduce((a, r) => a + r.classes, 0);
-  const totalAttended = rows.reduce((a, r) => a + r.attended, 0);
-  const shortCount = rows.filter((r) => r.att < 75).length;
+  const { overall, totalClasses, totalAttended, shortCount } = summarizeStudentAttendance(courseRows);
 
   return {
     configured: true as const,

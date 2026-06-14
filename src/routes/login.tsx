@@ -47,9 +47,9 @@ function Login() {
 
   return (
     <div className="min-h-screen grid lg:grid-cols-2 bg-background">
-      <div className="hidden lg:flex relative flex-col justify-between p-12 bg-sidebar text-sidebar-foreground overflow-hidden">
+      <div className="hidden lg:flex relative flex-col justify-between p-12 gradient-mesh-auth text-sidebar-foreground overflow-hidden">
         <AmbientOrbs />
-        <div className="absolute inset-0 opacity-20 [background:radial-gradient(circle_at_20%_30%,white_0,transparent_40%),radial-gradient(circle_at_80%_70%,white_0,transparent_40%)]" />
+        <div className="absolute inset-0 opacity-30 [background:radial-gradient(circle_at_20%_30%,white_0,transparent_40%),radial-gradient(circle_at_80%_70%,white_0,transparent_40%)]" />
         <div className="relative flex items-center gap-3 animate-fade-in-up">
           <div className="size-10 rounded-xl bg-sidebar-primary grid place-content-center text-sidebar-primary-foreground">
             <GraduationCap className="size-5" />
@@ -90,7 +90,7 @@ function Login() {
       <div className="flex items-center justify-center p-6 lg:p-12">
         <div className="w-full max-w-md animate-auth-panel">
           <div className="lg:hidden mb-8 flex items-center gap-3">
-            <div className="size-10 rounded-xl bg-primary grid place-content-center text-primary-foreground">
+            <div className="size-10 rounded-xl gradient-primary grid place-content-center text-primary-foreground shadow-lg shadow-primary/30">
               <GraduationCap className="size-5" />
             </div>
             <span className="font-semibold text-lg">{APP_NAME}</span>
@@ -126,18 +126,18 @@ function Login() {
             <label className="flex items-center gap-2 text-sm text-muted-foreground">
               <Checkbox id="remember" /> Remember me for 30 days
             </label>
-            <Button type="submit" className="w-full bg-primary hover:bg-primary/90" disabled={loading}>
+            <Button type="submit" className="w-full h-11" disabled={loading}>
               {loading ? "Signing in..." : "Sign In"}
             </Button>
             <div className="text-center text-sm text-muted-foreground">
               Don't have an account?{" "}
-              <Link to="/signup" className="text-accent font-medium hover:underline">
+              <Link to="/signup" className="text-primary font-medium hover:underline">
                 Create one
               </Link>
             </div>
             <div className="text-center text-sm text-muted-foreground pt-2">
               Administrator?{" "}
-              <Link to="/admin/login" className="text-accent font-medium hover:underline">
+              <Link to="/admin/login" className="text-primary font-medium hover:underline">
                 Admin login
               </Link>
             </div>

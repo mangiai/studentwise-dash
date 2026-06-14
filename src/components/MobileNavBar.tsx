@@ -71,7 +71,7 @@ export function MobileNavBar({ items, path, primaryCount = 4 }: MobileNavBarProp
 
   return (
     <nav
-      className="lg:hidden fixed bottom-0 inset-x-0 z-40 border-t bg-card/95 backdrop-blur-md supports-[backdrop-filter]:bg-card/80 pb-[env(safe-area-inset-bottom)]"
+      className="lg:hidden fixed bottom-0 inset-x-0 z-40 border-t border-primary/10 bg-card/95 backdrop-blur-md supports-[backdrop-filter]:bg-card/80 pb-[env(safe-area-inset-bottom)]"
       aria-label="Mobile navigation"
     >
       <div className="flex items-stretch h-16 px-1 max-w-lg mx-auto">

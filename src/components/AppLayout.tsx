@@ -78,7 +78,7 @@ export function AppLayout({ children, title, subtitle }: { children: React.React
 
   return (
     <div className="min-h-screen app-shell-bg flex">
-      <aside className="hidden lg:flex w-64 shrink-0 flex-col bg-sidebar text-sidebar-foreground sticky top-0 h-screen shadow-lg shadow-sidebar/20">
+      <aside className="hidden lg:flex w-64 shrink-0 flex-col bg-sidebar text-sidebar-foreground sticky top-0 h-screen sidebar-glow">
         <div className="px-6 h-16 flex items-center gap-2 border-b border-sidebar-border">
           <div className="size-9 rounded-lg bg-sidebar-primary flex items-center justify-center text-sidebar-primary-foreground font-bold text-sm transition-transform duration-300 hover:scale-105">
             {APP_LOGO_SHORT}
@@ -99,7 +99,7 @@ export function AppLayout({ children, title, subtitle }: { children: React.React
                 className={cn(
                   "nav-link-motion flex items-center gap-3 rounded-md px-3 py-2",
                   active
-                    ? "bg-sidebar-accent text-sidebar-accent-foreground font-medium shadow-sm"
+                    ? "bg-sidebar-accent text-sidebar-accent-foreground font-medium nav-active-glow"
                     : "text-sidebar-foreground/80 hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground",
                 )}
               >

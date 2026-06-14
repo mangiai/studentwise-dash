@@ -48,7 +48,7 @@ function Fees() {
         <>
           <div className="grid gap-4 lg:grid-cols-3 mb-6">
             <Card className="lg:col-span-2 overflow-hidden">
-              <div className="bg-gradient-to-r from-primary to-primary/80 text-primary-foreground p-6">
+              <div className="gradient-primary text-primary-foreground p-6">
                 <div className="text-xs opacity-80 uppercase tracking-wide">{fees.semester}</div>
                 <div className="text-3xl font-semibold mt-1">PKR {fees.total.toLocaleString()}</div>
                 <div className="text-sm opacity-90 mt-1">Total semester fee</div>

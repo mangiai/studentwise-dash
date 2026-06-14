@@ -32,7 +32,7 @@ type InteractiveCardProps = React.HTMLAttributes<HTMLDivElement> & {
 /** Subtle 3D lift on hover — use instead of Card for stat tiles */
 export function InteractiveCard({ children, className, ...props }: InteractiveCardProps) {
   return (
-    <div className={cn("card-interactive rounded-xl border bg-card text-card-foreground shadow-sm", className)} {...props}>
+    <div className={cn("card-interactive stat-glow rounded-2xl border bg-card text-card-foreground shadow-sm ring-1 ring-black/[0.03]", className)} {...props}>
       {children}
     </div>
   );

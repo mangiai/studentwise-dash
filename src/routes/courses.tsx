@@ -46,7 +46,7 @@ function Courses() {
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             {courses.map((c) => (
               <Card key={c.code} className="overflow-hidden">
-                <div className="h-1.5 bg-gradient-to-r from-primary to-accent" />
+                <div className="h-1.5 gradient-primary" />
                 <CardContent className="p-5 space-y-4">
                   <div className="flex items-start justify-between gap-3">
                     <div>

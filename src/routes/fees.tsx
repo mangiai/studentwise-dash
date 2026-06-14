@@ -61,16 +61,10 @@ function Fees() {
             </Card>
 
             <Card>
-              <CardHeader><CardTitle className="text-base">Quick Actions</CardTitle></CardHeader>
-              <CardContent className="space-y-2">
-                <Button className="w-full bg-primary hover:bg-primary/90" disabled>
-                  Pay Full Fee (demo)
-                </Button>
+              <CardHeader><CardTitle className="text-base">Challan</CardTitle></CardHeader>
+              <CardContent>
                 <Button variant="outline" className="w-full" onClick={handleDownloadInvoice}>
                   <Download className="size-4" /> Download Challan
-                </Button>
-                <Button variant="ghost" className="w-full" disabled>
-                  Request Installment (demo)
                 </Button>
               </CardContent>
             </Card>
@@ -100,11 +94,6 @@ function Fees() {
                   <div className="text-2xl font-semibold mt-1">PKR {fees.pending.toLocaleString()}</div>
                   <div className="text-xs text-muted-foreground mt-1">Due: {fees.dueDate}</div>
                 </div>
-                {fees.pending > 0 && (
-                  <Button className="w-full bg-accent hover:bg-accent/90 text-accent-foreground" disabled>
-                    Pay Now (demo)
-                  </Button>
-                )}
               </CardContent>
             </Card>
           </div>

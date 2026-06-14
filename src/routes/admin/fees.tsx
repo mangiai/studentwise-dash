@@ -5,13 +5,16 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { toast } from "sonner";
 import { Search, RefreshCw } from "lucide-react";
 import { pageHead } from "@/lib/seo";
 import { requireStaff } from "@/lib/auth-guards";
-import { loadAdminPageData, statusBadge, matchesSearch } from "@/lib/admin/shared";
+import { loadAdminPageData, matchesSearch, SELECT_CONTENT_CLASS } from "@/lib/admin/shared";
 import { CURRENT_SEMESTER } from "@/lib/constants";
-import { adminRegenerateChallan } from "@/lib/supabase/data";
+import { adminRegenerateChallan, adminUpdateChallanStatus } from "@/lib/supabase/data";
+
+const FEE_STATUSES = ["Paid", "Pending", "Overdue"] as const;
 
 export const Route = createFileRoute("/admin/fees")({
   head: () => pageHead("Fees & Challans"),
@@ -28,6 +31,7 @@ function AdminFees() {
 
   const [search, setSearch] = useState("");
   const [regeneratingId, setRegeneratingId] = useState<string | null>(null);
+  const [updatingId, setUpdatingId] = useState<string | null>(null);
 
   const filteredStudents = useMemo(
     () =>
@@ -55,8 +59,25 @@ function AdminFees() {
     }
   }
 
+  async function handleStatusChange(studentId: string, status: string) {
+    if (!FEE_STATUSES.includes(status as (typeof FEE_STATUSES)[number])) return;
+
+    setUpdatingId(studentId);
+    try {
+      await adminUpdateChallanStatus({
+        data: { studentId, status: status as (typeof FEE_STATUSES)[number] },
+      });
+      toast.success(`Challan status set to ${status}`);
+      await router.invalidate();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not update challan status");
+    } finally {
+      setUpdatingId(null);
+    }
+  }
+
   return (
-    <AdminLayout title="Fees & Challans" subtitle={`Student fee status for ${CURRENT_SEMESTER}`}>
+    <AdminLayout title="Fees & Challans" subtitle={`Manage challan status for ${CURRENT_SEMESTER}`}>
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 gap-4">
           <CardTitle className="text-base">Student fee status</CardTitle>
@@ -78,7 +99,7 @@ function AdminFees() {
                 <TableHead>ID</TableHead>
                 <TableHead>Department</TableHead>
                 <TableHead>Semester</TableHead>
-                <TableHead>Fee status</TableHead>
+                <TableHead>Challan status</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -96,7 +117,24 @@ function AdminFees() {
                   <TableCell className="font-mono text-xs text-muted-foreground">{s.id}</TableCell>
                   <TableCell>{s.dept}</TableCell>
                   <TableCell>{CURRENT_SEMESTER}</TableCell>
-                  <TableCell>{statusBadge(s.fee)}</TableCell>
+                  <TableCell>
+                    <Select
+                      value={s.fee}
+                      disabled={updatingId === s.id}
+                      onValueChange={(value) => void handleStatusChange(s.id, value)}
+                    >
+                      <SelectTrigger className="w-[140px] h-8">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent className={SELECT_CONTENT_CLASS}>
+                        {FEE_STATUSES.map((status) => (
+                          <SelectItem key={status} value={status}>
+                            {status}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </TableCell>
                   <TableCell className="text-right">
                     <Button
                       type="button"

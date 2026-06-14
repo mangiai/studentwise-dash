@@ -1341,10 +1341,61 @@ export const adminRegenerateChallan = createServerFn({ method: "POST" })
 
     if (error) throw new Error(error.message);
 
+    await admin.from("students").update({ fee_status: "Pending" }).eq("id", data.studentId);
+
     await notifyStudentUser(admin, data.studentId, {
       type: "fee",
       title: "Semester challan regenerated",
       body: `Your ${CURRENT_SEMESTER} fee challan (PKR ${total.toLocaleString()}) is ready. View it under Fee Management.`,
+    });
+
+    return { ok: true as const };
+  });
+
+export const adminUpdateChallanStatus = createServerFn({ method: "POST" })
+  .validator((d: unknown) =>
+    z
+      .object({
+        studentId: z.string(),
+        status: z.enum(["Paid", "Pending", "Overdue"]),
+      })
+      .parse(d),
+  )
+  .handler(async ({ data }) => {
+    await requireStaffUser();
+    const admin = getSupabaseServiceClient();
+
+    const { error: studentError } = await admin
+      .from("students")
+      .update({ fee_status: data.status })
+      .eq("id", data.studentId);
+
+    if (studentError) throw new Error(studentError.message);
+
+    const { data: semesterFee } = await admin
+      .from("semester_fees")
+      .select("total_amount_pkr, amount_paid_pkr")
+      .eq("student_id", data.studentId)
+      .eq("semester", CURRENT_SEMESTER)
+      .maybeSingle();
+
+    if (semesterFee) {
+      const total = Number(semesterFee.total_amount_pkr);
+      const paid = data.status === "Paid" ? total : Number(semesterFee.amount_paid_pkr);
+
+      const { error: feeError } = await admin
+        .from("semester_fees")
+        .update({ amount_paid_pkr: paid })
+        .eq("student_id", data.studentId)
+        .eq("semester", CURRENT_SEMESTER);
+
+      if (feeError) throw new Error(feeError.message);
+    }
+
+    await notifyStudentUser(admin, data.studentId, {
+      type: "fee",
+      title: "Challan status updated",
+      body: `Your ${CURRENT_SEMESTER} fee challan status is now ${data.status}.`,
     });
 
     return { ok: true as const };

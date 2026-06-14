@@ -11,8 +11,6 @@ import { pageHead } from "@/lib/seo";
 import { requireAuth } from "@/lib/auth-guards";
 import { fetchStudentCourses } from "@/lib/supabase/data";
 import { CURRENT_SEMESTER } from "@/lib/constants";
-import { useRealtimeInvalidate } from "@/hooks/use-realtime-invalidate";
-
 export const Route = createFileRoute("/courses")({
   head: () => pageHead("Courses"),
   beforeLoad: ({ context }) => {
@@ -31,8 +29,6 @@ function attBadge(att: number) {
 function Courses() {
   const { configured, courses } = Route.useLoaderData();
   const credits = courses.reduce((a, c) => a + c.credits, 0);
-
-  useRealtimeInvalidate(["enrollments", "notifications"]);
 
   return (
     <AppLayout title="Enrolled Courses" subtitle={`${courses.length} active courses · ${credits} credit hours this semester`}>

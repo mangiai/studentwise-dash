@@ -101,7 +101,7 @@ function AdminLogin() {
               <Input
                 id="admin-email"
                 type="email"
-                placeholder="admin@studentwise.test"
+                placeholder="admin@studentwise.test or moderator@studentwise.test"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 autoComplete="email"

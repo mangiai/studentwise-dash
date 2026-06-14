@@ -9,8 +9,6 @@ import { toast } from "sonner";
 import { pageHead } from "@/lib/seo";
 import { requireAuth } from "@/lib/auth-guards";
 import { fetchNotifications, markNotificationRead, markNotificationsRead } from "@/lib/supabase/data";
-import { useRealtimeInvalidate } from "@/hooks/use-realtime-invalidate";
-
 export const Route = createFileRoute("/notifications")({
   head: () => pageHead("Notifications"),
   beforeLoad: ({ context }) => {
@@ -31,8 +29,6 @@ function Notifications() {
   const router = useRouter();
   const { configured, notifications } = Route.useLoaderData();
   const unread = notifications.filter((n) => !n.read).length;
-
-  useRealtimeInvalidate(["notifications"]);
 
   async function handleMarkAllRead() {
     try {

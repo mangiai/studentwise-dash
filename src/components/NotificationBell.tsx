@@ -2,13 +2,10 @@ import { Link, useRouter } from "@tanstack/react-router";
 import { Bell } from "lucide-react";
 import { useEffect, useState } from "react";
 import { fetchUnreadNotificationCount } from "@/lib/supabase/data";
-import { useRealtimeInvalidate } from "@/hooks/use-realtime-invalidate";
 
 export function NotificationBell() {
   const router = useRouter();
   const [count, setCount] = useState(0);
-
-  useRealtimeInvalidate(["notifications"]);
 
   useEffect(() => {
     let active = true;

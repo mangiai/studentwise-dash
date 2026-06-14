@@ -16,6 +16,7 @@ CREATE EXTENSION IF NOT EXISTS pgcrypto;
 -- hassan@studentwise.test -> 2026-BSCS-0043
 -- teacher@studentwise.test -> FAC-2018-014
 -- maryam@studentwise.test -> 2025-BSEE-0118
+-- moderator@studentwise.test -> staff (no student/teacher link)
 
 -- Remove stale identities (older seeds used UUID as provider_id; GoTrue expects email)
 DELETE FROM auth.identities
@@ -24,7 +25,8 @@ WHERE user_id IN (
   'a0000002-0002-4002-8002-000000000002',
   'a0000003-0003-4003-8003-000000000003',
   'a0000004-0004-4004-8004-000000000004',
-  'a0000005-0005-4005-8005-000000000005'
+  'a0000005-0005-4005-8005-000000000005',
+  'a0000006-0006-4006-8006-000000000006'
 );
 
 INSERT INTO auth.users (
@@ -114,6 +116,20 @@ VALUES
     now(),
     now(),
     '', '', '', ''
+  ),
+  (
+    '00000000-0000-0000-0000-000000000000',
+    'a0000006-0006-4006-8006-000000000006',
+    'authenticated',
+    'authenticated',
+    'moderator@studentwise.test',
+    crypt('StudentWise123!', gen_salt('bf', 10)),
+    now(),
+    '{"provider":"email","providers":["email"],"role":"moderator"}'::jsonb,
+    '{"full_name":"Portal Moderator"}'::jsonb,
+    now(),
+    now(),
+    '', '', '', ''
   )
 ON CONFLICT (id) DO UPDATE SET
   email = EXCLUDED.email,
@@ -173,6 +189,14 @@ VALUES
     '{"sub":"a0000005-0005-4005-8005-000000000005","email":"maryam@studentwise.test","email_verified":true}'::jsonb,
     'email',
     now(), now(), now()
+  ),
+  (
+    'b0000006-0006-4006-8006-000000000006',
+    'a0000006-0006-4006-8006-000000000006',
+    'moderator@studentwise.test',
+    '{"sub":"a0000006-0006-4006-8006-000000000006","email":"moderator@studentwise.test","email_verified":true}'::jsonb,
+    'email',
+    now(), now(), now()
   )
 ON CONFLICT (provider_id, provider) DO UPDATE SET
   user_id = EXCLUDED.user_id,
@@ -185,7 +209,8 @@ VALUES
   ('a0000002-0002-4002-8002-000000000002', 'Sarah Ahmed', 'student'),
   ('a0000003-0003-4003-8003-000000000003', 'Hassan Raza', 'student'),
   ('a0000004-0004-4004-8004-000000000004', 'Dr. Aamir Khan', 'teacher'),
-  ('a0000005-0005-4005-8005-000000000005', 'Maryam Khan', 'student')
+  ('a0000005-0005-4005-8005-000000000005', 'Maryam Khan', 'student'),
+  ('a0000006-0006-4006-8006-000000000006', 'Portal Moderator', 'moderator')
 ON CONFLICT (id) DO UPDATE SET
   full_name = EXCLUDED.full_name,
   role = EXCLUDED.role,

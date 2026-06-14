@@ -11,7 +11,6 @@ import {
   Settings,
   LogOut,
   Search,
-  ShieldCheck,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
@@ -20,7 +19,10 @@ import { Badge } from "@/components/ui/badge";
 import { APP_LOGO_SHORT, APP_NAME, APP_TAGLINE } from "@/lib/brand";
 import { NotificationBell } from "@/components/NotificationBell";
 import { CURRENT_SEMESTER } from "@/lib/constants";
+import type { UserRole } from "@/lib/auth-types";
+import { isStaffRole } from "@/lib/auth-types";
 import { useAuthUser } from "@/hooks/use-auth";
+import { useRealtimeInvalidate } from "@/hooks/use-realtime-invalidate";
 import { signOut } from "@/lib/supabase/auth";
 import { toast } from "sonner";
 
@@ -32,7 +34,6 @@ const nav: { to: string; label: string; icon: typeof LayoutDashboard; roles: Use
   { to: "/teachers", label: "Teachers", icon: Users, roles: ["student", "teacher", "admin"] },
   { to: "/results", label: "Results", icon: GraduationCap, roles: ["student", "teacher", "admin"] },
   { to: "/reports", label: "Reports", icon: BarChart3, roles: ["teacher", "admin"] },
-  { to: "/admin/dashboard", label: "Admin Panel", icon: ShieldCheck, roles: ["admin", "moderator"] },
   { to: "/notifications", label: "Notifications", icon: Bell, roles: ["student", "teacher", "admin"] },
   { to: "/settings", label: "Settings", icon: Settings, roles: ["student", "teacher", "admin"] },
 ];
@@ -51,10 +52,18 @@ export function AppLayout({ children, title, subtitle }: { children: React.React
     authUser ? item.roles.includes(authUser.role) : true,
   );
 
+  useRealtimeInvalidate([
+    "enrollments",
+    "notifications",
+    "semester_fees",
+    "course_grades",
+    "attendance_records",
+  ]);
+
   async function handleLogout() {
     try {
       await signOut();
-      window.location.href = authUser?.role === "admin" ? "/admin/login" : "/login";
+      window.location.href = isStaffRole(authUser?.role) ? "/admin/login" : "/login";
     } catch {
       toast.error("Could not sign out");
     }

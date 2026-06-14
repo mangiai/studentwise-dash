@@ -7,8 +7,6 @@ import { pageHead } from "@/lib/seo";
 import { requireAuth } from "@/lib/auth-guards";
 import { fetchStudentResults } from "@/lib/supabase/data";
 import { useAuthUser } from "@/hooks/use-auth";
-import { useRealtimeInvalidate } from "@/hooks/use-realtime-invalidate";
-
 export const Route = createFileRoute("/results")({
   head: () => pageHead("Results"),
   beforeLoad: ({ context }) => {
@@ -29,8 +27,6 @@ function Results() {
   const authUser = useAuthUser();
   const { configured, semesters, student } = Route.useLoaderData();
   const cgpa = student?.gpa ?? 0;
-
-  useRealtimeInvalidate(["course_grades", "notifications"]);
 
   if (authUser?.role !== "student") {
     return (

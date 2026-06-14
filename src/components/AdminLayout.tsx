@@ -3,7 +3,6 @@ import {
   LayoutDashboard,
   LogOut,
   ShieldCheck,
-  ArrowLeft,
   Users,
   GraduationCap,
   BookOpen,
@@ -86,13 +85,6 @@ export function AdminLayout({ children, title, subtitle }: { children: React.Rea
               </Link>
             );
           })}
-          <Link
-            to="/dashboard"
-            className="flex items-center gap-3 rounded-md px-3 py-2 text-sidebar-foreground/80 hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground transition-colors mt-4"
-          >
-            <ArrowLeft className="size-4" />
-            Student portal
-          </Link>
         </nav>
         <div className="p-3 border-t border-sidebar-border">
           <button

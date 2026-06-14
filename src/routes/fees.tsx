@@ -11,8 +11,6 @@ import { requireAuth } from "@/lib/auth-guards";
 import { fetchStudentFees, generateFeeInvoice } from "@/lib/supabase/data";
 import { openFeeInvoice } from "@/lib/invoice";
 import { CURRENT_SEMESTER } from "@/lib/constants";
-import { useRealtimeInvalidate } from "@/hooks/use-realtime-invalidate";
-
 export const Route = createFileRoute("/fees")({
   head: () => pageHead("Fees"),
   beforeLoad: ({ context }) => {
@@ -27,8 +25,6 @@ export const Route = createFileRoute("/fees")({
 
 function Fees() {
   const { fees, history, invoice } = Route.useLoaderData();
-
-  useRealtimeInvalidate(["semester_fees", "notifications"]);
 
   async function handleDownloadInvoice() {
     if (!invoice) {

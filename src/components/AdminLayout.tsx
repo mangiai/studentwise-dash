@@ -19,6 +19,8 @@ import { useAuthUser } from "@/hooks/use-auth";
 import { signOut } from "@/lib/supabase/auth";
 import { toast } from "sonner";
 import { ATTENDANCE_TERM, CURRENT_SEMESTER } from "@/lib/constants";
+import { PageContent } from "@/components/motion";
+import { MobileMenuButton } from "@/components/MobileNavBar";
 
 const nav = [
   { to: "/admin/dashboard", label: "Overview", icon: LayoutDashboard, exact: true },
@@ -56,10 +58,10 @@ export function AdminLayout({ children, title, subtitle }: { children: React.Rea
   }
 
   return (
-    <div className="min-h-screen bg-background flex">
-      <aside className="hidden lg:flex w-64 shrink-0 flex-col bg-sidebar text-sidebar-foreground sticky top-0 h-screen">
+    <div className="min-h-screen app-shell-bg flex">
+      <aside className="hidden lg:flex w-64 shrink-0 flex-col bg-sidebar text-sidebar-foreground sticky top-0 h-screen shadow-lg shadow-sidebar/20">
         <div className="px-6 h-16 flex items-center gap-2 border-b border-sidebar-border">
-          <div className="size-9 rounded-lg bg-sidebar-primary flex items-center justify-center text-sidebar-primary-foreground font-bold text-sm">
+          <div className="size-9 rounded-lg bg-sidebar-primary flex items-center justify-center text-sidebar-primary-foreground font-bold text-sm transition-transform duration-300 hover:scale-105">
             {APP_LOGO_SHORT}
           </div>
           <div className="leading-tight">
@@ -76,9 +78,9 @@ export function AdminLayout({ children, title, subtitle }: { children: React.Rea
                 key={item.to}
                 to={item.to}
                 className={cn(
-                  "flex items-center gap-3 rounded-md px-3 py-2 transition-colors",
+                  "nav-link-motion flex items-center gap-3 rounded-md px-3 py-2 transition-colors",
                   active
-                    ? "bg-sidebar-accent text-sidebar-accent-foreground font-medium"
+                    ? "bg-sidebar-accent text-sidebar-accent-foreground font-medium shadow-sm"
                     : "text-sidebar-foreground/80 hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground",
                 )}
               >
@@ -92,7 +94,7 @@ export function AdminLayout({ children, title, subtitle }: { children: React.Rea
           <button
             type="button"
             onClick={handleLogout}
-            className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm text-sidebar-foreground/80 hover:bg-sidebar-accent/60"
+            className="nav-link-motion flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm text-sidebar-foreground/80 hover:bg-sidebar-accent/60"
           >
             <LogOut className="size-4" /> Logout
           </button>
@@ -100,13 +102,16 @@ export function AdminLayout({ children, title, subtitle }: { children: React.Rea
       </aside>
 
       <div className="flex-1 flex flex-col min-w-0">
-        <header className="sticky top-0 z-10 bg-card border-b h-16 px-4 lg:px-8 flex items-center justify-between gap-4">
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <ShieldCheck className="size-4" />
-            Staff access only
+        <header className="sticky top-0 z-30 header-glass border-b h-14 sm:h-16 px-3 sm:px-4 lg:px-8 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2 min-w-0">
+            <MobileMenuButton items={nav} path={path} title="Staff Portal" />
+            <div className="flex items-center gap-2 text-xs sm:text-sm text-muted-foreground min-w-0">
+              <ShieldCheck className="size-4 shrink-0" />
+              <span className="truncate hidden sm:inline">Staff access only</span>
+            </div>
           </div>
-          <div className="flex items-center gap-3">
-            <Avatar className="size-9">
+          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+            <Avatar className="size-8 sm:size-9">
               <AvatarFallback className="bg-primary text-primary-foreground text-xs font-semibold">
                 {initials}
               </AvatarFallback>
@@ -120,17 +125,17 @@ export function AdminLayout({ children, title, subtitle }: { children: React.Rea
           </div>
         </header>
 
-        <main className="p-4 lg:p-8 flex-1">
-          <div className="mb-6 flex items-end justify-between flex-wrap gap-3">
-            <div>
-              <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
-              {subtitle && <p className="text-sm text-muted-foreground mt-1">{subtitle}</p>}
+        <main className="p-3 sm:p-4 lg:p-8 flex-1 min-w-0">
+          <div className="mb-4 sm:mb-6 flex items-start sm:items-end justify-between flex-wrap gap-3 animate-fade-in-up">
+            <div className="min-w-0">
+              <h1 className="text-xl sm:text-2xl font-semibold tracking-tight">{title}</h1>
+              {subtitle && <p className="text-xs sm:text-sm text-muted-foreground mt-1">{subtitle}</p>}
             </div>
-            <Badge variant="outline" className="bg-card">
+            <Badge variant="outline" className="bg-card shrink-0">
               {path.startsWith("/admin/attendance") ? ATTENDANCE_TERM : CURRENT_SEMESTER}
             </Badge>
           </div>
-          {children}
+          <PageContent>{children}</PageContent>
         </main>
       </div>
     </div>

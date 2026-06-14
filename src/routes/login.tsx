@@ -10,6 +10,7 @@ import { APP_COPYRIGHT, APP_NAME, APP_TAGLINE } from "@/lib/brand";
 import { requireGuest } from "@/lib/auth-guards";
 import { pageHead } from "@/lib/seo";
 import { signIn } from "@/lib/supabase/auth";
+import { AmbientOrbs } from "@/components/motion";
 
 export const Route = createFileRoute("/login")({
   head: () => pageHead("Sign In"),
@@ -47,8 +48,9 @@ function Login() {
   return (
     <div className="min-h-screen grid lg:grid-cols-2 bg-background">
       <div className="hidden lg:flex relative flex-col justify-between p-12 bg-sidebar text-sidebar-foreground overflow-hidden">
+        <AmbientOrbs />
         <div className="absolute inset-0 opacity-20 [background:radial-gradient(circle_at_20%_30%,white_0,transparent_40%),radial-gradient(circle_at_80%_70%,white_0,transparent_40%)]" />
-        <div className="relative flex items-center gap-3">
+        <div className="relative flex items-center gap-3 animate-fade-in-up">
           <div className="size-10 rounded-xl bg-sidebar-primary grid place-content-center text-sidebar-primary-foreground">
             <GraduationCap className="size-5" />
           </div>
@@ -58,7 +60,7 @@ function Login() {
           </div>
         </div>
 
-        <div className="relative space-y-6 max-w-md">
+        <div className="relative space-y-6 max-w-md animate-fade-in-up" style={{ animationDelay: "80ms" }}>
           <h2 className="text-3xl font-semibold leading-tight">
             Empowering students, faculty, and admins — all in one place.
           </h2>
@@ -72,8 +74,8 @@ function Login() {
               { i: Users, t: "Faculty and student collaboration" },
               { i: ShieldCheck, t: "Secure fee payments & records" },
             ].map(({ i: Icon, t }) => (
-              <div key={t} className="flex items-center gap-3 text-sm">
-                <div className="size-8 rounded-md bg-sidebar-accent grid place-content-center">
+              <div key={t} className="auth-feature-row flex items-center gap-3 text-sm">
+                <div className="size-8 rounded-md bg-sidebar-accent grid place-content-center transition-transform duration-300 hover:scale-110">
                   <Icon className="size-4" />
                 </div>
                 {t}
@@ -86,7 +88,7 @@ function Login() {
       </div>
 
       <div className="flex items-center justify-center p-6 lg:p-12">
-        <div className="w-full max-w-md">
+        <div className="w-full max-w-md animate-auth-panel">
           <div className="lg:hidden mb-8 flex items-center gap-3">
             <div className="size-10 rounded-xl bg-primary grid place-content-center text-primary-foreground">
               <GraduationCap className="size-5" />

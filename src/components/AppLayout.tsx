@@ -25,6 +25,8 @@ import { useAuthUser } from "@/hooks/use-auth";
 import { useRealtimeInvalidate } from "@/hooks/use-realtime-invalidate";
 import { signOut } from "@/lib/supabase/auth";
 import { toast } from "sonner";
+import { PageContent } from "@/components/motion";
+import { MobileNavBar } from "@/components/MobileNavBar";
 
 const nav: { to: string; label: string; icon: typeof LayoutDashboard; roles: UserRole[] }[] = [
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard, roles: ["student", "teacher", "admin"] },
@@ -52,6 +54,11 @@ export function AppLayout({ children, title, subtitle }: { children: React.React
     authUser ? item.roles.includes(authUser.role) : true,
   );
 
+  const mobileNavItems = visibleNav.map((item) => ({
+    ...item,
+    useLink: false as const,
+  }));
+
   useRealtimeInvalidate([
     "enrollments",
     "notifications",
@@ -70,10 +77,10 @@ export function AppLayout({ children, title, subtitle }: { children: React.React
   }
 
   return (
-    <div className="min-h-screen bg-background flex">
-      <aside className="hidden lg:flex w-64 shrink-0 flex-col bg-sidebar text-sidebar-foreground sticky top-0 h-screen">
+    <div className="min-h-screen app-shell-bg flex">
+      <aside className="hidden lg:flex w-64 shrink-0 flex-col bg-sidebar text-sidebar-foreground sticky top-0 h-screen shadow-lg shadow-sidebar/20">
         <div className="px-6 h-16 flex items-center gap-2 border-b border-sidebar-border">
-          <div className="size-9 rounded-lg bg-sidebar-primary flex items-center justify-center text-sidebar-primary-foreground font-bold text-sm">
+          <div className="size-9 rounded-lg bg-sidebar-primary flex items-center justify-center text-sidebar-primary-foreground font-bold text-sm transition-transform duration-300 hover:scale-105">
             {APP_LOGO_SHORT}
           </div>
           <div className="leading-tight">
@@ -90,9 +97,9 @@ export function AppLayout({ children, title, subtitle }: { children: React.React
                 key={item.to}
                 href={item.to}
                 className={cn(
-                  "flex items-center gap-3 rounded-md px-3 py-2 transition-colors",
+                  "nav-link-motion flex items-center gap-3 rounded-md px-3 py-2",
                   active
-                    ? "bg-sidebar-accent text-sidebar-accent-foreground font-medium"
+                    ? "bg-sidebar-accent text-sidebar-accent-foreground font-medium shadow-sm"
                     : "text-sidebar-foreground/80 hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground",
                 )}
               >
@@ -106,46 +113,56 @@ export function AppLayout({ children, title, subtitle }: { children: React.React
           <button
             type="button"
             onClick={handleLogout}
-            className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm text-sidebar-foreground/80 hover:bg-sidebar-accent/60"
+            className="nav-link-motion flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm text-sidebar-foreground/80 hover:bg-sidebar-accent/60"
           >
             <LogOut className="size-4" /> Logout
           </button>
         </div>
       </aside>
 
-      <div className="flex-1 flex flex-col min-w-0">
-        <header className="sticky top-0 z-10 bg-card border-b h-16 px-4 lg:px-8 flex items-center gap-4">
-          <div className="flex-1 max-w-md relative">
-            <Search className="size-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-            <Input placeholder="Search students, courses, teachers..." className="pl-9 bg-background" />
+      <div className="flex-1 flex flex-col min-w-0 pb-16 lg:pb-0">
+        <header className="sticky top-0 z-30 header-glass border-b h-14 sm:h-16 px-3 sm:px-4 lg:px-8 flex items-center gap-2 sm:gap-4">
+          <div className="lg:hidden flex items-center gap-2 shrink-0">
+            <div className="size-8 rounded-lg bg-primary text-primary-foreground grid place-content-center text-xs font-bold">
+              {APP_LOGO_SHORT}
+            </div>
+          </div>
+          <div className="flex-1 min-w-0 max-w-md relative">
+            <Search className="size-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+            <Input
+              placeholder="Search..."
+              className="pl-9 bg-background/80 h-9 sm:h-10 text-sm"
+            />
           </div>
           <NotificationBell />
-          <div className="hidden sm:flex items-center gap-3 pl-3 border-l">
-            <Avatar className="size-9">
+          <div className="flex items-center gap-2 sm:gap-3 sm:pl-3 sm:border-l shrink-0">
+            <Avatar className="size-8 sm:size-9">
               <AvatarFallback className="bg-primary text-primary-foreground text-xs font-semibold">
                 {initials}
               </AvatarFallback>
             </Avatar>
-            <div className="leading-tight">
-              <div className="text-sm font-medium">{authUser?.fullName ?? "User"}</div>
-              <div className="text-xs text-muted-foreground capitalize">{authUser?.role ?? APP_TAGLINE}</div>
+            <div className="leading-tight hidden md:block max-w-[140px]">
+              <div className="text-sm font-medium truncate">{authUser?.fullName ?? "User"}</div>
+              <div className="text-xs text-muted-foreground capitalize truncate">{authUser?.role ?? APP_TAGLINE}</div>
             </div>
           </div>
         </header>
 
-        <main className="p-4 lg:p-8 flex-1">
-          <div className="mb-6 flex items-end justify-between flex-wrap gap-3">
-            <div>
-              <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
-              {subtitle && <p className="text-sm text-muted-foreground mt-1">{subtitle}</p>}
+        <main className="p-3 sm:p-4 lg:p-8 flex-1 min-w-0">
+          <div className="mb-4 sm:mb-6 flex items-start sm:items-end justify-between flex-wrap gap-3 animate-fade-in-up">
+            <div className="min-w-0">
+              <h1 className="text-xl sm:text-2xl font-semibold tracking-tight">{title}</h1>
+              {subtitle && <p className="text-xs sm:text-sm text-muted-foreground mt-1">{subtitle}</p>}
             </div>
-            <Badge variant="outline" className="bg-card">
+            <Badge variant="outline" className="bg-card shrink-0">
               {path === "/attendance" ? ATTENDANCE_TERM : CURRENT_SEMESTER}
             </Badge>
           </div>
-          {children}
+          <PageContent>{children}</PageContent>
         </main>
       </div>
+
+      <MobileNavBar items={mobileNavItems} path={path} primaryCount={3} />
     </div>
   );
 }

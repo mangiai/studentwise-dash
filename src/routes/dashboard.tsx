@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { AppLayout } from "@/components/AppLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { InteractiveCard, AnimatedGrid } from "@/components/motion";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
@@ -48,9 +49,9 @@ function Dashboard() {
 
     return (
       <AppLayout title={`Welcome back, ${firstName}`} subtitle="University overview from live database.">
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <AnimatedGrid className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           {staffStats.map((item) => (
-            <Card key={item.label}>
+            <InteractiveCard key={item.label}>
               <CardContent className="p-5">
                 <div className={`size-10 rounded-lg grid place-content-center ${item.tint}`}>
                   <item.icon className="size-5" />
@@ -58,9 +59,9 @@ function Dashboard() {
                 <div className="mt-4 text-2xl font-semibold">{item.value}</div>
                 <div className="text-xs text-muted-foreground mt-1">{item.label}</div>
               </CardContent>
-            </Card>
+            </InteractiveCard>
           ))}
-        </div>
+        </AnimatedGrid>
         {data.courseDist.length > 0 && (
           <Card className="mt-6">
             <CardHeader>
@@ -103,9 +104,9 @@ function Dashboard() {
 
   return (
     <AppLayout title={`Welcome back, ${firstName}`} subtitle="Here's what's happening with your studies today.">
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <AnimatedGrid className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {studentStats.map((s) => (
-          <Card key={s.label}>
+          <InteractiveCard key={s.label}>
             <CardContent className="p-5">
               <div className={`size-10 rounded-lg grid place-content-center ${s.tint}`}>
                 <s.icon className="size-5" />
@@ -113,9 +114,9 @@ function Dashboard() {
               <div className="mt-4 text-2xl font-semibold">{s.value}</div>
               <div className="text-xs text-muted-foreground mt-1">{s.label}</div>
             </CardContent>
-          </Card>
+          </InteractiveCard>
         ))}
-      </div>
+      </AnimatedGrid>
 
       <div className="grid gap-4 lg:grid-cols-3 mt-6">
         <Card className="lg:col-span-2">

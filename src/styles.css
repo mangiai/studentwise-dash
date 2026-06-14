@@ -150,4 +150,201 @@
     font-family: "Poppins", "Inter", system-ui, sans-serif;
     letter-spacing: -0.01em;
   }
+
+  @media (prefers-reduced-motion: no-preference) {
+    html {
+      scroll-behavior: smooth;
+    }
+  }
+}
+
+/* ─── Motion & depth ─────────────────────────────────────────────────────── */
+
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes page-enter {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes float-y {
+  0%, 100% {
+    transform: translateY(0) scale(1);
+  }
+  50% {
+    transform: translateY(-12px) scale(1.02);
+  }
+}
+
+@keyframes shimmer-slide {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(100%);
+  }
+}
+
+@keyframes orb-drift {
+  0%, 100% {
+    transform: translate(0, 0) scale(1);
+  }
+  33% {
+    transform: translate(8%, -6%) scale(1.05);
+  }
+  66% {
+    transform: translate(-5%, 4%) scale(0.95);
+  }
+}
+
+.animate-page-enter {
+  animation: page-enter 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.animate-fade-in-up {
+  animation: fade-in-up 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.animate-auth-panel {
+  animation: fade-in-up 0.6s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.stagger-children > * {
+  animation: fade-in-up 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.stagger-children > *:nth-child(1) { animation-delay: 0ms; }
+.stagger-children > *:nth-child(2) { animation-delay: 50ms; }
+.stagger-children > *:nth-child(3) { animation-delay: 100ms; }
+.stagger-children > *:nth-child(4) { animation-delay: 150ms; }
+.stagger-children > *:nth-child(5) { animation-delay: 200ms; }
+.stagger-children > *:nth-child(6) { animation-delay: 250ms; }
+.stagger-children > *:nth-child(7) { animation-delay: 300ms; }
+.stagger-children > *:nth-child(8) { animation-delay: 350ms; }
+.stagger-children > *:nth-child(n + 9) { animation-delay: 400ms; }
+
+.card-interactive {
+  transform-style: preserve-3d;
+  perspective: 1000px;
+  transition:
+    transform 0.35s cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@media (hover: hover) and (prefers-reduced-motion: no-preference) {
+  .card-interactive:hover {
+    transform: translateY(-4px) rotateX(2deg) rotateY(-1deg);
+    box-shadow:
+      0 4px 6px -1px oklch(0.32 0.06 255 / 0.06),
+      0 20px 40px -12px oklch(0.32 0.06 255 / 0.12);
+  }
+}
+
+.app-shell-bg {
+  background-color: var(--color-background);
+  background-image:
+    radial-gradient(ellipse 80% 50% at 50% -20%, oklch(0.72 0.14 240 / 0.08), transparent),
+    radial-gradient(ellipse 60% 40% at 100% 0%, oklch(0.32 0.06 255 / 0.04), transparent);
+}
+
+.header-glass {
+  background: oklch(1 0 0 / 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.dark .header-glass {
+  background: oklch(0.208 0.042 265.755 / 0.85);
+}
+
+.nav-link-motion {
+  transition:
+    transform 0.2s ease,
+    background-color 0.2s ease,
+    color 0.2s ease;
+}
+
+@media (hover: hover) {
+  .nav-link-motion:hover {
+    transform: translateX(2px);
+  }
+}
+
+.ambient-orb {
+  position: absolute;
+  border-radius: 9999px;
+  filter: blur(60px);
+  opacity: 0.35;
+  animation: orb-drift 12s ease-in-out infinite;
+}
+
+.ambient-orb-1 {
+  width: 280px;
+  height: 280px;
+  top: 10%;
+  left: -5%;
+  background: oklch(0.72 0.14 240 / 0.5);
+}
+
+.ambient-orb-2 {
+  width: 220px;
+  height: 220px;
+  bottom: 20%;
+  right: -5%;
+  background: oklch(1 0 0 / 0.25);
+  animation-delay: -4s;
+}
+
+.ambient-orb-3 {
+  width: 160px;
+  height: 160px;
+  top: 45%;
+  right: 25%;
+  background: oklch(0.68 0.16 150 / 0.3);
+  animation-delay: -8s;
+}
+
+.auth-feature-row {
+  animation: fade-in-up 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.auth-feature-row:nth-child(1) { animation-delay: 200ms; }
+.auth-feature-row:nth-child(2) { animation-delay: 300ms; }
+.auth-feature-row:nth-child(3) { animation-delay: 400ms; }
+
+.table-responsive {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-page-enter,
+  .animate-fade-in-up,
+  .animate-auth-panel,
+  .stagger-children > *,
+  .auth-feature-row,
+  .ambient-orb,
+  .card-interactive {
+    animation: none !important;
+    transition: none !important;
+  }
+
+  .card-interactive:hover {
+    transform: none !important;
+  }
 }

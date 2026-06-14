@@ -46,6 +46,14 @@ const users = [
     ],
   },
   {
+    email: "moderator@studentwise.test",
+    fullName: "Portal Moderator",
+    role: "moderator",
+    studentId: null,
+    teacherId: null,
+    notifications: [],
+  },
+  {
     email: "sarah@studentwise.test",
     fullName: "Sarah Ahmed",
     role: "student",

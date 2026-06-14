@@ -129,6 +129,9 @@ INSERT INTO public.attendance_records (enrollment_id, total_classes, classes_att
 ON CONFLICT (enrollment_id) DO NOTHING;
 
 INSERT INTO public.semester_fees (student_id, semester, total_amount_pkr, amount_paid_pkr, due_date) VALUES
+  ('2026-BSCS-0042', 'Spring 2026', 98000, 98000, '2026-03-15'),
+  ('2026-BSCS-0043', 'Spring 2026', 98000, 49000, '2026-03-15'),
+  ('2025-BSEE-0118', 'Spring 2026', 98000, 98000, '2026-03-15'),
   ('2026-BSCS-0042', 'Fall 2026', 98000, 49000, '2026-09-15'),
   ('2026-BSCS-0043', 'Fall 2026', 98000, 49000, '2026-09-15'),
   ('2025-BSEE-0118', 'Fall 2026', 98000, 98000, '2026-09-15')
@@ -179,6 +182,7 @@ SELECT u.id,
 FROM auth.users u
 WHERE u.email IN (
   'admin@studentwise.test',
+  'moderator@studentwise.test',
   'sarah@studentwise.test',
   'hassan@studentwise.test',
   'teacher@studentwise.test',

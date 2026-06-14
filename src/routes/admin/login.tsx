@@ -6,14 +6,14 @@ import { Label } from "@/components/ui/label";
 import { ShieldCheck, Lock, Users, BarChart3 } from "lucide-react";
 import { toast } from "sonner";
 import { APP_COPYRIGHT, APP_NAME } from "@/lib/brand";
-import { requireAdminGuest } from "@/lib/auth-guards";
+import { requireStaffGuest } from "@/lib/auth-guards";
 import { pageHead } from "@/lib/seo";
 import { signIn } from "@/lib/supabase/auth";
 
 export const Route = createFileRoute("/admin/login")({
   head: () => pageHead("Admin Sign In"),
   beforeLoad: ({ context }) => {
-    requireAdminGuest(context.authUser);
+    requireStaffGuest(context.authUser);
   },
   component: AdminLogin,
 });
@@ -33,7 +33,7 @@ function AdminLogin() {
     setLoading(true);
     try {
       await signIn({ data: { email: email.trim(), password } });
-      toast.success("Welcome, admin!");
+      toast.success("Welcome to the staff portal!");
       window.location.href = "/admin/dashboard";
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Sign in failed");
@@ -52,13 +52,13 @@ function AdminLogin() {
           </div>
           <div>
             <div className="font-semibold text-lg">{APP_NAME}</div>
-            <div className="text-xs opacity-70">Admin Portal</div>
+            <div className="text-xs opacity-70">Staff Portal</div>
           </div>
         </div>
 
         <div className="relative space-y-6 max-w-md">
           <h2 className="text-3xl font-semibold leading-tight">
-            Secure admin access for university staff.
+            Secure staff access for university administrators and moderators.
           </h2>
           <p className="text-sm opacity-80">
             Manage students, teachers, courses, fees, and institutional records from one dashboard.
@@ -88,16 +88,16 @@ function AdminLogin() {
             <div className="size-10 rounded-xl bg-primary grid place-content-center text-primary-foreground">
               <ShieldCheck className="size-5" />
             </div>
-            <span className="font-semibold text-lg">{APP_NAME} Admin</span>
+            <span className="font-semibold text-lg">{APP_NAME} Staff</span>
           </div>
-          <h1 className="text-2xl font-semibold tracking-tight">Admin sign in</h1>
+          <h1 className="text-2xl font-semibold tracking-tight">Staff sign in</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Use your administrator credentials to access the admin dashboard.
+            Use your staff credentials to access the admin dashboard.
           </p>
 
           <form className="mt-8 space-y-4" onSubmit={handleSubmit}>
             <div className="space-y-2">
-              <Label htmlFor="admin-email">Admin email</Label>
+              <Label htmlFor="admin-email">Staff email</Label>
               <Input
                 id="admin-email"
                 type="email"
@@ -121,7 +121,7 @@ function AdminLogin() {
               />
             </div>
             <Button type="submit" className="w-full bg-primary hover:bg-primary/90" disabled={loading}>
-              {loading ? "Signing in..." : "Sign in to Admin"}
+              {loading ? "Signing in..." : "Sign in to Staff Portal"}
             </Button>
             <div className="text-center text-sm text-muted-foreground">
               Student or teacher?{" "}

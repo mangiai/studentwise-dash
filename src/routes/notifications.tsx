@@ -1,4 +1,4 @@
-import { createFileRoute, useRouter } from "@tanstack/react-router";
+import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { AppLayout } from "@/components/AppLayout";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -8,7 +8,8 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { pageHead } from "@/lib/seo";
 import { requireAuth } from "@/lib/auth-guards";
-import { fetchNotifications, markNotificationsRead } from "@/lib/supabase/data";
+import { fetchNotifications, markNotificationRead, markNotificationsRead } from "@/lib/supabase/data";
+import { useRealtimeInvalidate } from "@/hooks/use-realtime-invalidate";
 
 export const Route = createFileRoute("/notifications")({
   head: () => pageHead("Notifications"),
@@ -31,6 +32,8 @@ function Notifications() {
   const { configured, notifications } = Route.useLoaderData();
   const unread = notifications.filter((n) => !n.read).length;
 
+  useRealtimeInvalidate(["notifications"]);
+
   async function handleMarkAllRead() {
     try {
       await markNotificationsRead();
@@ -41,12 +44,21 @@ function Notifications() {
     }
   }
 
+  async function handleMarkRead(id: string) {
+    try {
+      await markNotificationRead({ data: { id } });
+      await router.invalidate();
+    } catch {
+      toast.error("Could not mark notification as read");
+    }
+  }
+
   return (
     <AppLayout title="Notifications" subtitle={`${unread} unread notification${unread === 1 ? "" : "s"}`}>
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <Bell className="size-4" />
-          Live notifications from your Supabase account
+          Updates from admin actions, fees, courses, and announcements
         </div>
         {unread > 0 && (
           <Button variant="outline" size="sm" onClick={handleMarkAllRead}>Mark all as read</Button>
@@ -59,8 +71,7 @@ function Notifications() {
         )}
         {notifications.length === 0 && (
           <p className="text-sm text-muted-foreground">
-            No notifications yet. If you expected alerts, run{" "}
-            <code className="text-xs bg-muted px-1 rounded">supabase/seed-cloud-complete.sql</code> in the Supabase SQL Editor.
+            No notifications yet. Admin enrollments, grade posts, and fee challans will appear here automatically.
           </p>
         )}
         {notifications.map((n) => {
@@ -79,6 +90,11 @@ function Notifications() {
                   <p className="text-sm text-muted-foreground mt-1">{n.body}</p>
                   <div className="text-xs text-muted-foreground mt-2">{n.time}</div>
                 </div>
+                {!n.read && (
+                  <Button variant="ghost" size="sm" onClick={() => handleMarkRead(n.id)}>
+                    Mark read
+                  </Button>
+                )}
               </CardContent>
             </Card>
           );

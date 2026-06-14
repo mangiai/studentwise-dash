@@ -18,7 +18,8 @@ import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { APP_LOGO_SHORT, APP_NAME, APP_TAGLINE } from "@/lib/brand";
-import type { UserRole } from "@/lib/auth-types";
+import { NotificationBell } from "@/components/NotificationBell";
+import { CURRENT_SEMESTER } from "@/lib/constants";
 import { useAuthUser } from "@/hooks/use-auth";
 import { signOut } from "@/lib/supabase/auth";
 import { toast } from "sonner";
@@ -31,7 +32,7 @@ const nav: { to: string; label: string; icon: typeof LayoutDashboard; roles: Use
   { to: "/teachers", label: "Teachers", icon: Users, roles: ["student", "teacher", "admin"] },
   { to: "/results", label: "Results", icon: GraduationCap, roles: ["student", "teacher", "admin"] },
   { to: "/reports", label: "Reports", icon: BarChart3, roles: ["teacher", "admin"] },
-  { to: "/admin/dashboard", label: "Admin Panel", icon: ShieldCheck, roles: ["admin"] },
+  { to: "/admin/dashboard", label: "Admin Panel", icon: ShieldCheck, roles: ["admin", "moderator"] },
   { to: "/notifications", label: "Notifications", icon: Bell, roles: ["student", "teacher", "admin"] },
   { to: "/settings", label: "Settings", icon: Settings, roles: ["student", "teacher", "admin"] },
 ];
@@ -109,10 +110,7 @@ export function AppLayout({ children, title, subtitle }: { children: React.React
             <Search className="size-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
             <Input placeholder="Search students, courses, teachers..." className="pl-9 bg-background" />
           </div>
-          <button className="relative p-2 rounded-md hover:bg-muted">
-            <Bell className="size-5 text-muted-foreground" />
-            <span className="absolute top-1.5 right-1.5 size-2 rounded-full bg-destructive" />
-          </button>
+          <NotificationBell />
           <div className="hidden sm:flex items-center gap-3 pl-3 border-l">
             <Avatar className="size-9">
               <AvatarFallback className="bg-primary text-primary-foreground text-xs font-semibold">
@@ -133,7 +131,7 @@ export function AppLayout({ children, title, subtitle }: { children: React.React
               {subtitle && <p className="text-sm text-muted-foreground mt-1">{subtitle}</p>}
             </div>
             <Badge variant="outline" className="bg-card">
-              Spring Semester - 2026
+              {CURRENT_SEMESTER}
             </Badge>
           </div>
           {children}

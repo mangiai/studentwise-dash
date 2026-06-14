@@ -1,4 +1,8 @@
-export type UserRole = "student" | "teacher" | "admin";
+export type UserRole = "student" | "teacher" | "admin" | "moderator";
+
+export function isStaffRole(role: UserRole | undefined) {
+  return role === "admin" || role === "moderator";
+}
 
 export type AuthUser = {
   id: string;

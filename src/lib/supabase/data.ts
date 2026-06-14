@@ -6,6 +6,8 @@ import {
   isSupabaseServerConfigured,
 } from "@/lib/supabase/server";
 import type { AuthUser, UserRole } from "@/lib/auth-types";
+import { isStaffRole } from "@/lib/auth-types";
+import { CURRENT_SEMESTER } from "@/lib/constants";
 
 async function getSessionUser() {
   const supabase = getSupabaseServerClient();
@@ -28,8 +30,17 @@ async function getProfileRole(userId: string): Promise<UserRole> {
       : undefined;
 
   if (profile?.role === "admin" || appRole === "admin") return "admin";
+  if (profile?.role === "moderator" || appRole === "moderator") return "moderator";
   if (profile?.role === "teacher" || appRole === "teacher") return "teacher";
   return (profile?.role as UserRole) ?? appRole ?? "student";
+}
+
+async function requireStaffUser() {
+  const user = await getSessionUser();
+  if (!user) throw new Error("Not authenticated");
+  const role = await getProfileRole(user.id);
+  if (!isStaffRole(role)) throw new Error("Staff access required");
+  return user;
 }
 
 async function requireAdminUser() {
@@ -38,6 +49,22 @@ async function requireAdminUser() {
   const role = await getProfileRole(user.id);
   if (role !== "admin") throw new Error("Admin access required");
   return user;
+}
+
+async function notifyStudentUser(
+  admin: ReturnType<typeof getSupabaseServiceClient>,
+  studentId: string,
+  payload: { type: "fee" | "attendance" | "course" | "announcement"; title: string; body: string },
+) {
+  const { data: student } = await admin.from("students").select("user_id, name").eq("id", studentId).maybeSingle();
+  if (!student?.user_id) return;
+  await admin.from("notifications").insert({
+    user_id: student.user_id,
+    type: payload.type,
+    title: payload.title,
+    body: payload.body,
+    read: false,
+  });
 }
 
 const TEST_STUDENT_LINKS: Record<string, string> = {
@@ -163,7 +190,7 @@ export const fetchPortalDashboard = createServerFn({ method: "GET" }).handler(as
       attendance_records ( percentage, total_classes, classes_attended )
     `)
     .eq("student_id", studentId)
-    .eq("semester", "Spring 2026");
+    .eq("semester", CURRENT_SEMESTER);
 
   const coursesList = (enrollmentRows ?? []).map((e) => {
     const att = e.attendance_records?.[0];
@@ -226,7 +253,7 @@ export const fetchStudentCourses = createServerFn({ method: "GET" }).handler(asy
       attendance_records ( percentage )
     `)
     .eq("student_id", studentId)
-    .eq("semester", "Spring 2026");
+    .eq("semester", CURRENT_SEMESTER);
 
   if (error) {
     console.error("fetchStudentCourses:", error.message, { studentId });
@@ -264,7 +291,7 @@ export const fetchStudentAttendance = createServerFn({ method: "GET" }).handler(
       attendance_records ( total_classes, classes_attended, percentage )
     `)
     .eq("student_id", studentId)
-    .eq("semester", "Spring 2026");
+    .eq("semester", CURRENT_SEMESTER);
 
   if (error) {
     console.error("fetchStudentAttendance:", error.message, { studentId });
@@ -304,20 +331,32 @@ export const fetchStudentFees = createServerFn({ method: "GET" }).handler(async 
   if (!studentId) return { configured: true as const, fees: null, history: [] };
 
   const db = getStudentDataClient();
-  const [{ data: semesterFee }, { data: transactions }] = await Promise.all([
-    db
+  let semesterFee = (
+    await db
       .from("semester_fees")
       .select("*")
       .eq("student_id", studentId)
-      .order("semester", { ascending: false })
-      .limit(1)
-      .maybeSingle(),
-    db
+      .eq("semester", CURRENT_SEMESTER)
+      .maybeSingle()
+  ).data;
+
+  if (!semesterFee) {
+    semesterFee = (
+      await db
+        .from("semester_fees")
+        .select("*")
+        .eq("student_id", studentId)
+        .order("semester", { ascending: false })
+        .limit(1)
+        .maybeSingle()
+    ).data;
+  }
+
+  const { data: transactions } = await db
       .from("fee_transactions")
       .select("*")
       .eq("student_id", studentId)
-      .order("transaction_date", { ascending: false }),
-  ]);
+      .order("transaction_date", { ascending: false });
 
   const history = (transactions ?? []).map((t) => ({
     date: new Date(t.transaction_date).toLocaleDateString("en-US", {
@@ -572,7 +611,7 @@ export const fetchReportsData = createServerFn({ method: "GET" }).handler(async 
 export const fetchAdminData = createServerFn({ method: "GET" }).handler(async () => {
   if (!isSupabaseServerConfigured()) return { configured: false as const, students: [], teachers: [], courses: [] };
 
-  await requireAdminUser();
+  await requireStaffUser();
   const admin = getSupabaseServiceClient();
 
   const [{ data: students }, { data: teachers }, { data: courses }, { data: enrollments }] =
@@ -580,7 +619,7 @@ export const fetchAdminData = createServerFn({ method: "GET" }).handler(async ()
       admin.from("students").select("id, name, semester, fee_status, status, departments ( name )").order("name"),
       admin.from("teachers").select("id, name, courses_count, status, departments ( name )").order("name"),
       admin.from("courses").select("id, name, credits, instructor_id, teachers ( name )").order("name"),
-      admin.from("enrollments").select("course_id, student_id").eq("semester", "Spring 2026"),
+      admin.from("enrollments").select("course_id, student_id").eq("semester", CURRENT_SEMESTER),
     ]);
 
   const enrolledByCourse = new Map<string, string[]>();
@@ -636,7 +675,7 @@ const studentSchema = z.object({
 export const adminUpsertStudent = createServerFn({ method: "POST" })
   .validator((d: unknown) => studentSchema.parse(d))
   .handler(async ({ data }) => {
-    await requireAdminUser();
+    await requireStaffUser();
     const admin = getSupabaseServiceClient();
     const { data: dept } = await admin.from("departments").select("id").eq("name", data.dept).maybeSingle();
 
@@ -674,7 +713,7 @@ const teacherSchema = z.object({
 export const adminUpsertTeacher = createServerFn({ method: "POST" })
   .validator((d: unknown) => teacherSchema.parse(d))
   .handler(async ({ data }) => {
-    await requireAdminUser();
+    await requireStaffUser();
     const admin = getSupabaseServiceClient();
     const { data: dept } = await admin.from("departments").select("id").eq("name", data.dept).maybeSingle();
 
@@ -710,7 +749,7 @@ const courseSchema = z.object({
 export const adminUpsertCourse = createServerFn({ method: "POST" })
   .validator((d: unknown) => courseSchema.parse(d))
   .handler(async ({ data }) => {
-    await requireAdminUser();
+    await requireStaffUser();
     const admin = getSupabaseServiceClient();
 
     const { error } = await admin.from("courses").upsert({
@@ -738,27 +777,30 @@ export const adminDeleteCourse = createServerFn({ method: "POST" })
 export const adminEnrollStudent = createServerFn({ method: "POST" })
   .validator((d: unknown) => z.object({ courseId: z.string(), studentId: z.string() }).parse(d))
   .handler(async ({ data }) => {
-    await requireAdminUser();
+    await requireStaffUser();
     const admin = getSupabaseServiceClient();
 
     const { error } = await admin.from("enrollments").upsert(
       {
         student_id: data.studentId,
         course_id: data.courseId,
-        semester: "Spring 2026",
+        semester: CURRENT_SEMESTER,
       },
       { onConflict: "student_id,course_id,semester" },
     );
 
     if (error) throw new Error(error.message);
 
-    const { data: existing } = await admin
-      .from("enrollments")
-      .select("id")
-      .eq("student_id", data.studentId)
-      .eq("course_id", data.courseId)
-      .eq("semester", "Spring 2026")
-      .single();
+    const [{ data: existing }, { data: course }] = await Promise.all([
+      admin
+        .from("enrollments")
+        .select("id")
+        .eq("student_id", data.studentId)
+        .eq("course_id", data.courseId)
+        .eq("semester", CURRENT_SEMESTER)
+        .single(),
+      admin.from("courses").select("name").eq("id", data.courseId).maybeSingle(),
+    ]);
 
     if (existing) {
       await admin.from("attendance_records").upsert(
@@ -767,20 +809,26 @@ export const adminEnrollStudent = createServerFn({ method: "POST" })
       );
     }
 
+    await notifyStudentUser(admin, data.studentId, {
+      type: "course",
+      title: "Course enrollment updated",
+      body: `You have been enrolled in ${course?.name ?? data.courseId} for ${CURRENT_SEMESTER}.`,
+    });
+
     return { ok: true as const };
   });
 
 export const adminUnenrollStudent = createServerFn({ method: "POST" })
   .validator((d: unknown) => z.object({ courseId: z.string(), studentId: z.string() }).parse(d))
   .handler(async ({ data }) => {
-    await requireAdminUser();
+    await requireStaffUser();
     const admin = getSupabaseServiceClient();
     const { error } = await admin
       .from("enrollments")
       .delete()
       .eq("course_id", data.courseId)
       .eq("student_id", data.studentId)
-      .eq("semester", "Spring 2026");
+      .eq("semester", CURRENT_SEMESTER);
 
     if (error) throw new Error(error.message);
     return { ok: true as const };
@@ -789,7 +837,7 @@ export const adminUnenrollStudent = createServerFn({ method: "POST" })
 export const adminAssignInstructor = createServerFn({ method: "POST" })
   .validator((d: unknown) => z.object({ courseId: z.string(), teacherId: z.string() }).parse(d))
   .handler(async ({ data }) => {
-    await requireAdminUser();
+    await requireStaffUser();
     const admin = getSupabaseServiceClient();
 
     const { error } = await admin
@@ -807,6 +855,345 @@ export const fetchDepartments = createServerFn({ method: "GET" }).handler(async 
   const { data } = await supabase.from("departments").select("id, name, code").order("name");
   return { configured: true as const, departments: data ?? [] };
 });
+
+export const fetchAdminEnrollments = createServerFn({ method: "GET" }).handler(async () => {
+  if (!isSupabaseServerConfigured()) return { configured: false as const, enrollments: [] };
+
+  await requireStaffUser();
+  const admin = getSupabaseServiceClient();
+
+  const { data } = await admin
+    .from("enrollments")
+    .select(`
+      student_id, course_id, semester,
+      students ( name ),
+      courses ( name )
+    `)
+    .eq("semester", CURRENT_SEMESTER)
+    .order("student_id");
+
+  const enrollments = (data ?? []).map((row) => ({
+    studentId: row.student_id,
+    studentName: row.students?.name ?? row.student_id,
+    courseId: row.course_id,
+    courseName: row.courses?.name ?? row.course_id,
+    semester: row.semester,
+  }));
+
+  return { configured: true as const, enrollments };
+});
+
+export const fetchUnreadNotificationCount = createServerFn({ method: "GET" }).handler(async () => {
+  if (!isSupabaseServerConfigured()) return { count: 0 };
+
+  const user = await getSessionUser();
+  if (!user) return { count: 0 };
+
+  const db = getStudentDataClient();
+  const { count } = await db
+    .from("notifications")
+    .select("id", { count: "exact", head: true })
+    .eq("user_id", user.id)
+    .eq("read", false);
+
+  return { count: count ?? 0 };
+});
+
+export const markNotificationRead = createServerFn({ method: "POST" })
+  .validator((d: unknown) => z.object({ id: z.string().uuid() }).parse(d))
+  .handler(async ({ data }) => {
+    const user = await getSessionUser();
+    if (!user) throw new Error("Not authenticated");
+
+    const supabase = getSupabaseServerClient();
+    const { error } = await supabase
+      .from("notifications")
+      .update({ read: true })
+      .eq("id", data.id)
+      .eq("user_id", user.id);
+
+    if (error) throw new Error(error.message);
+    return { ok: true as const };
+  });
+
+export const adminCreateNotification = createServerFn({ method: "POST" })
+  .validator((d: unknown) =>
+    z
+      .object({
+        target: z.enum(["student", "all_students", "role"]),
+        studentId: z.string().optional(),
+        role: z.enum(["student", "teacher", "admin", "moderator"]).optional(),
+        type: z.enum(["fee", "attendance", "course", "announcement"]),
+        title: z.string().min(1),
+        body: z.string().min(1),
+      })
+      .parse(d),
+  )
+  .handler(async ({ data }) => {
+    await requireStaffUser();
+    const admin = getSupabaseServiceClient();
+
+    let userIds: string[] = [];
+
+    if (data.target === "student" && data.studentId) {
+      const { data: student } = await admin
+        .from("students")
+        .select("user_id")
+        .eq("id", data.studentId)
+        .maybeSingle();
+      if (student?.user_id) userIds = [student.user_id];
+    } else if (data.target === "all_students") {
+      const { data: rows } = await admin.from("students").select("user_id").not("user_id", "is", null);
+      userIds = (rows ?? []).map((r) => r.user_id).filter(Boolean) as string[];
+    } else if (data.target === "role" && data.role) {
+      const { data: rows } = await admin.from("profiles").select("id").eq("role", data.role);
+      userIds = (rows ?? []).map((r) => r.id);
+    }
+
+    if (userIds.length === 0) throw new Error("No recipients found for this notification.");
+
+    const { error } = await admin.from("notifications").insert(
+      userIds.map((userId) => ({
+        user_id: userId,
+        type: data.type,
+        title: data.title,
+        body: data.body,
+        read: false,
+      })),
+    );
+
+    if (error) throw new Error(error.message);
+    return { ok: true as const, sent: userIds.length };
+  });
+
+export const fetchUserSettings = createServerFn({ method: "GET" }).handler(async () => {
+  if (!isSupabaseServerConfigured()) return { configured: false as const, settings: null };
+
+  const user = await getSessionUser();
+  if (!user) return { configured: true as const, settings: null };
+
+  const db = getStudentDataClient();
+  const { data } = await db
+    .from("profiles")
+    .select("full_name, role, notify_email, notify_push, notify_fee_reminders")
+    .eq("id", user.id)
+    .maybeSingle();
+
+  return {
+    configured: true as const,
+    settings: {
+      fullName: data?.full_name ?? user.email ?? "",
+      email: user.email ?? "",
+      role: data?.role ?? "student",
+      notifyEmail: data?.notify_email ?? true,
+      notifyPush: data?.notify_push ?? true,
+      notifyFeeReminders: data?.notify_fee_reminders ?? true,
+    },
+  };
+});
+
+export const updateUserProfile = createServerFn({ method: "POST" })
+  .validator((d: unknown) => z.object({ fullName: z.string().min(2) }).parse(d))
+  .handler(async ({ data }) => {
+    const user = await getSessionUser();
+    if (!user) throw new Error("Not authenticated");
+
+    const db = getStudentDataClient();
+    const { error } = await db.from("profiles").update({ full_name: data.fullName }).eq("id", user.id);
+    if (error) throw new Error(error.message);
+    return { ok: true as const };
+  });
+
+export const updateNotificationPreferences = createServerFn({ method: "POST" })
+  .validator((d: unknown) =>
+    z
+      .object({
+        notifyEmail: z.boolean(),
+        notifyPush: z.boolean(),
+        notifyFeeReminders: z.boolean(),
+      })
+      .parse(d),
+  )
+  .handler(async ({ data }) => {
+    const user = await getSessionUser();
+    if (!user) throw new Error("Not authenticated");
+
+    const db = getStudentDataClient();
+    const { error } = await db
+      .from("profiles")
+      .update({
+        notify_email: data.notifyEmail,
+        notify_push: data.notifyPush,
+        notify_fee_reminders: data.notifyFeeReminders,
+      })
+      .eq("id", user.id);
+
+    if (error) throw new Error(error.message);
+    return { ok: true as const };
+  });
+
+export const changeUserPassword = createServerFn({ method: "POST" })
+  .validator((d: unknown) =>
+    z.object({ currentPassword: z.string().min(6), newPassword: z.string().min(8) }).parse(d),
+  )
+  .handler(async ({ data }) => {
+    const supabase = getSupabaseServerClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user?.email) throw new Error("Not authenticated");
+
+    const { error: signInError } = await supabase.auth.signInWithPassword({
+      email: user.email,
+      password: data.currentPassword,
+    });
+    if (signInError) throw new Error("Current password is incorrect");
+
+    const { error } = await supabase.auth.updateUser({ password: data.newPassword });
+    if (error) throw new Error(error.message);
+    return { ok: true as const };
+  });
+
+export const generateFeeInvoice = createServerFn({ method: "GET" }).handler(async () => {
+  if (!isSupabaseServerConfigured()) return { configured: false as const, invoice: null };
+
+  const user = await getSessionUser();
+  if (!user) return { configured: true as const, invoice: null };
+
+  const studentId = await getLinkedStudentId(user.id, user.email);
+  if (!studentId) return { configured: true as const, invoice: null };
+
+  const db = getStudentDataClient();
+  const [{ data: student }, { data: semesterFee }] = await Promise.all([
+    db.from("students").select("id, name").eq("id", studentId).single(),
+    db
+      .from("semester_fees")
+      .select("*")
+      .eq("student_id", studentId)
+      .eq("semester", CURRENT_SEMESTER)
+      .maybeSingle(),
+  ]);
+
+  const total = Number(semesterFee?.total_amount_pkr ?? 98000);
+  const paid = Number(semesterFee?.amount_paid_pkr ?? 0);
+  const pending = total - paid;
+  const challanNo = `SW-${studentId.replace(/-/g, "")}-${CURRENT_SEMESTER.replace(/\s/g, "")}`;
+
+  return {
+    configured: true as const,
+    invoice: {
+      challanNo,
+      semester: CURRENT_SEMESTER,
+      studentId: student?.id ?? studentId,
+      studentName: student?.name ?? "Student",
+      issuedAt: new Date().toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" }),
+      dueDate: semesterFee?.due_date
+        ? new Date(semesterFee.due_date).toLocaleDateString("en-US", {
+            month: "long",
+            day: "numeric",
+            year: "numeric",
+          })
+        : "—",
+      lineItems: [
+        { label: "Tuition Fee", amount: Math.round(total * 0.75) },
+        { label: "Lab & Facilities", amount: Math.round(total * 0.15) },
+        { label: "Student Services", amount: total - Math.round(total * 0.75) - Math.round(total * 0.15) },
+      ],
+      total,
+      paid,
+      pending,
+    },
+  };
+});
+
+export const adminRegenerateChallan = createServerFn({ method: "POST" })
+  .validator((d: unknown) =>
+    z.object({ studentId: z.string(), totalAmount: z.number().min(0).optional() }).parse(d),
+  )
+  .handler(async ({ data }) => {
+    await requireStaffUser();
+    const admin = getSupabaseServiceClient();
+    const total = data.totalAmount ?? 98000;
+
+    const { error } = await admin.from("semester_fees").upsert(
+      {
+        student_id: data.studentId,
+        semester: CURRENT_SEMESTER,
+        total_amount_pkr: total,
+        amount_paid_pkr: 0,
+        due_date: "2026-09-15",
+      },
+      { onConflict: "student_id,semester" },
+    );
+
+    if (error) throw new Error(error.message);
+
+    await notifyStudentUser(admin, data.studentId, {
+      type: "fee",
+      title: "Semester challan regenerated",
+      body: `Your ${CURRENT_SEMESTER} fee challan (PKR ${total.toLocaleString()}) is ready. View it under Fee Management.`,
+    });
+
+    return { ok: true as const };
+  });
+
+const gradeSchema = z.object({
+  studentId: z.string(),
+  courseId: z.string(),
+  semester: z.string(),
+  grade: z.string(),
+  gradePoints: z.number().min(0).max(16),
+});
+
+export const adminUpsertGrade = createServerFn({ method: "POST" })
+  .validator((d: unknown) => gradeSchema.parse(d))
+  .handler(async ({ data }) => {
+    await requireStaffUser();
+    const admin = getSupabaseServiceClient();
+
+    const { error } = await admin.from("course_grades").upsert(
+      {
+        student_id: data.studentId,
+        course_id: data.courseId,
+        semester: data.semester,
+        grade: data.grade,
+        grade_points: data.gradePoints,
+      },
+      { onConflict: "student_id,course_id,semester" },
+    );
+
+    if (error) throw new Error(error.message);
+
+    await notifyStudentUser(admin, data.studentId, {
+      type: "announcement",
+      title: "Grade posted",
+      body: `Your grade for ${data.courseId} (${data.semester}) has been updated: ${data.grade}.`,
+    });
+
+    return { ok: true as const };
+  });
+
+export const fetchAdminStudentGrades = createServerFn({ method: "GET" })
+  .validator((d: unknown) => z.object({ studentId: z.string() }).parse(d))
+  .handler(async ({ data }) => {
+    await requireStaffUser();
+    const admin = getSupabaseServiceClient();
+    const { data: grades } = await admin
+      .from("course_grades")
+      .select("course_id, semester, grade, grade_points, courses ( name )")
+      .eq("student_id", data.studentId)
+      .order("semester", { ascending: false });
+
+    return {
+      grades: (grades ?? []).map((g) => ({
+        courseId: g.course_id,
+        courseName: g.courses?.name ?? g.course_id,
+        semester: g.semester,
+        grade: g.grade,
+        gradePoints: Number(g.grade_points),
+      })),
+    };
+  });
 
 function formatRelativeTime(iso: string) {
   const diff = Date.now() - new Date(iso).getTime();

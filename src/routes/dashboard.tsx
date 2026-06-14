@@ -13,6 +13,7 @@ import { requireAuth } from "@/lib/auth-guards";
 import { pageHead } from "@/lib/seo";
 import { useAuthUser } from "@/hooks/use-auth";
 import { fetchPortalDashboard } from "@/lib/supabase/data";
+import { useRealtimeInvalidate } from "@/hooks/use-realtime-invalidate";
 
 export const Route = createFileRoute("/dashboard")({
   head: () => pageHead("Dashboard"),
@@ -27,6 +28,8 @@ function Dashboard() {
   const authUser = useAuthUser();
   const { configured, data } = Route.useLoaderData();
   const firstName = authUser?.fullName?.split(" ")[0] ?? "there";
+
+  useRealtimeInvalidate(["enrollments", "notifications", "semester_fees", "course_grades"]);
 
   if (!configured) {
     return (

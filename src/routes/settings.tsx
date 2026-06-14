@@ -1,5 +1,5 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
+import { createFileRoute, useRouter } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
 import { AppLayout } from "@/components/AppLayout";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -10,26 +10,91 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { pageHead } from "@/lib/seo";
 import { requireAuth } from "@/lib/auth-guards";
-import { useAuthUser } from "@/hooks/use-auth";
+import {
+  fetchUserSettings,
+  updateUserProfile,
+  updateNotificationPreferences,
+  changeUserPassword,
+} from "@/lib/supabase/data";
 
 export const Route = createFileRoute("/settings")({
   head: () => pageHead("Settings"),
   beforeLoad: ({ context }) => {
     requireAuth(context.authUser);
   },
+  loader: () => fetchUserSettings(),
   component: Settings,
 });
 
 function Settings() {
-  const authUser = useAuthUser();
-  const [fullName, setFullName] = useState(authUser?.fullName ?? "");
-  const [emailNotifs, setEmailNotifs] = useState(true);
-  const [pushNotifs, setPushNotifs] = useState(true);
-  const [feeReminders, setFeeReminders] = useState(true);
+  const router = useRouter();
+  const { settings } = Route.useLoaderData();
 
-  function handleSaveProfile(e: React.FormEvent) {
+  const [fullName, setFullName] = useState(settings?.fullName ?? "");
+  const [emailNotifs, setEmailNotifs] = useState(settings?.notifyEmail ?? true);
+  const [pushNotifs, setPushNotifs] = useState(settings?.notifyPush ?? true);
+  const [feeReminders, setFeeReminders] = useState(settings?.notifyFeeReminders ?? true);
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (settings) {
+      setFullName(settings.fullName);
+      setEmailNotifs(settings.notifyEmail);
+      setPushNotifs(settings.notifyPush);
+      setFeeReminders(settings.notifyFeeReminders);
+    }
+  }, [settings]);
+
+  async function handleSaveProfile(e: React.FormEvent) {
     e.preventDefault();
-    toast.success("Profile settings saved");
+    setSaving(true);
+    try {
+      await updateUserProfile({ data: { fullName: fullName.trim() } });
+      toast.success("Profile updated");
+      await router.invalidate();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not save profile");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleSaveNotifications() {
+    setSaving(true);
+    try {
+      await updateNotificationPreferences({
+        data: {
+          notifyEmail: emailNotifs,
+          notifyPush: pushNotifs,
+          notifyFeeReminders: feeReminders,
+        },
+      });
+      toast.success("Notification preferences saved");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not save preferences");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handlePasswordUpdate() {
+    if (!currentPassword || !newPassword) {
+      toast.error("Enter current and new password");
+      return;
+    }
+    setSaving(true);
+    try {
+      await changeUserPassword({ data: { currentPassword, newPassword } });
+      toast.success("Password updated");
+      setCurrentPassword("");
+      setNewPassword("");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not update password");
+    } finally {
+      setSaving(false);
+    }
   }
 
   return (
@@ -45,7 +110,7 @@ function Settings() {
           <Card>
             <CardHeader>
               <CardTitle className="text-base">Profile information</CardTitle>
-              <CardDescription>Update your display name and contact details.</CardDescription>
+              <CardDescription>Update your display name. Email is managed by your login account.</CardDescription>
             </CardHeader>
             <CardContent>
               <form className="space-y-4" onSubmit={handleSaveProfile}>
@@ -55,13 +120,15 @@ function Settings() {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="email">Email</Label>
-                  <Input id="email" value={authUser?.email ?? ""} disabled />
+                  <Input id="email" value={settings?.email ?? ""} disabled />
                 </div>
                 <div className="space-y-2">
                   <Label>Role</Label>
-                  <Input value={authUser?.role ?? ""} disabled className="capitalize" />
+                  <Input value={settings?.role ?? ""} disabled className="capitalize" />
                 </div>
-                <Button type="submit" className="bg-primary hover:bg-primary/90">Save changes</Button>
+                <Button type="submit" className="bg-primary hover:bg-primary/90" disabled={saving}>
+                  Save changes
+                </Button>
               </form>
             </CardContent>
           </Card>
@@ -71,7 +138,7 @@ function Settings() {
           <Card>
             <CardHeader>
               <CardTitle className="text-base">Notification preferences</CardTitle>
-              <CardDescription>Choose how you want to be notified.</CardDescription>
+              <CardDescription>Stored in your profile and used for in-app alerts.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
               {[
@@ -87,6 +154,9 @@ function Settings() {
                   <Switch checked={item.checked} onCheckedChange={item.onChange} />
                 </div>
               ))}
+              <Button className="bg-primary hover:bg-primary/90" onClick={handleSaveNotifications} disabled={saving}>
+                Save preferences
+              </Button>
             </CardContent>
           </Card>
         </TabsContent>
@@ -95,18 +165,18 @@ function Settings() {
           <Card>
             <CardHeader>
               <CardTitle className="text-base">Security</CardTitle>
-              <CardDescription>Update your password and session settings.</CardDescription>
+              <CardDescription>Update your password.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="current">Current password</Label>
-                <Input id="current" type="password" placeholder="••••••••" />
+                <Input id="current" type="password" value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="new">New password</Label>
-                <Input id="new" type="password" placeholder="••••••••" />
+                <Input id="new" type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} />
               </div>
-              <Button className="bg-primary hover:bg-primary/90" onClick={() => toast.success("Password updated")}>
+              <Button className="bg-primary hover:bg-primary/90" onClick={handlePasswordUpdate} disabled={saving}>
                 Update password
               </Button>
             </CardContent>

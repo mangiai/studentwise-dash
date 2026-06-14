@@ -10,6 +10,8 @@ import { AlertTriangle, BookOpen, ChevronRight } from "lucide-react";
 import { pageHead } from "@/lib/seo";
 import { requireAuth } from "@/lib/auth-guards";
 import { fetchStudentCourses } from "@/lib/supabase/data";
+import { CURRENT_SEMESTER } from "@/lib/constants";
+import { useRealtimeInvalidate } from "@/hooks/use-realtime-invalidate";
 
 export const Route = createFileRoute("/courses")({
   head: () => pageHead("Courses"),
@@ -30,11 +32,13 @@ function Courses() {
   const { configured, courses } = Route.useLoaderData();
   const credits = courses.reduce((a, c) => a + c.credits, 0);
 
+  useRealtimeInvalidate(["enrollments", "notifications"]);
+
   return (
     <AppLayout title="Enrolled Courses" subtitle={`${courses.length} active courses · ${credits} credit hours this semester`}>
       {!configured && <p className="text-sm text-muted-foreground mb-4">Supabase not configured.</p>}
       {courses.length === 0 && (
-        <p className="text-sm text-muted-foreground">No courses enrolled for Spring 2026.</p>
+        <p className="text-sm text-muted-foreground">No courses enrolled for {CURRENT_SEMESTER}.</p>
       )}
       <Tabs defaultValue="cards" className="w-full">
         <TabsList>

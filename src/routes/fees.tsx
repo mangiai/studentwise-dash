@@ -4,27 +4,49 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Download, CheckCircle2, Clock, AlertCircle } from "lucide-react";
+import { Download, CheckCircle2, Clock } from "lucide-react";
+import { toast } from "sonner";
 import { pageHead } from "@/lib/seo";
 import { requireAuth } from "@/lib/auth-guards";
-import { fetchStudentFees } from "@/lib/supabase/data";
+import { fetchStudentFees, generateFeeInvoice } from "@/lib/supabase/data";
+import { openFeeInvoice } from "@/lib/invoice";
+import { CURRENT_SEMESTER } from "@/lib/constants";
+import { useRealtimeInvalidate } from "@/hooks/use-realtime-invalidate";
 
 export const Route = createFileRoute("/fees")({
   head: () => pageHead("Fees"),
   beforeLoad: ({ context }) => {
     requireAuth(context.authUser);
   },
-  loader: () => fetchStudentFees(),
+  loader: async () => {
+    const [feesData, invoiceData] = await Promise.all([fetchStudentFees(), generateFeeInvoice()]);
+    return { ...feesData, invoice: invoiceData.invoice };
+  },
   component: Fees,
 });
 
 function Fees() {
-  const { fees, history } = Route.useLoaderData();
+  const { fees, history, invoice } = Route.useLoaderData();
+
+  useRealtimeInvalidate(["semester_fees", "notifications"]);
+
+  async function handleDownloadInvoice() {
+    if (!invoice) {
+      toast.error("No invoice available for your profile");
+      return;
+    }
+    const opened = openFeeInvoice(invoice);
+    if (!opened) toast.error("Allow pop-ups to download the challan");
+  }
 
   return (
-    <AppLayout title="Fee Management" subtitle="View, pay, and track your semester fees">
+    <AppLayout title="Fee Management" subtitle={`${CURRENT_SEMESTER} semester fees and payment history`}>
       {!fees && (
-        <p className="text-sm text-muted-foreground mb-4">No fee record linked to your student profile.</p>
+        <Card className="mb-4">
+          <CardContent className="p-6 text-sm text-muted-foreground">
+            No fee record for {CURRENT_SEMESTER} yet. Contact the admin office or ask staff to regenerate your challan.
+          </CardContent>
+        </Card>
       )}
       {fees && (
         <>
@@ -45,9 +67,15 @@ function Fees() {
             <Card>
               <CardHeader><CardTitle className="text-base">Quick Actions</CardTitle></CardHeader>
               <CardContent className="space-y-2">
-                <Button className="w-full bg-primary hover:bg-primary/90">Pay Full Fee</Button>
-                <Button variant="outline" className="w-full"><Download className="size-4" /> Download Voucher</Button>
-                <Button variant="ghost" className="w-full">Request Installment</Button>
+                <Button className="w-full bg-primary hover:bg-primary/90" disabled>
+                  Pay Full Fee (demo)
+                </Button>
+                <Button variant="outline" className="w-full" onClick={handleDownloadInvoice}>
+                  <Download className="size-4" /> Download Challan
+                </Button>
+                <Button variant="ghost" className="w-full" disabled>
+                  Request Installment (demo)
+                </Button>
               </CardContent>
             </Card>
           </div>
@@ -77,7 +105,9 @@ function Fees() {
                   <div className="text-xs text-muted-foreground mt-1">Due: {fees.dueDate}</div>
                 </div>
                 {fees.pending > 0 && (
-                  <Button className="w-full bg-accent hover:bg-accent/90 text-accent-foreground">Pay Now</Button>
+                  <Button className="w-full bg-accent hover:bg-accent/90 text-accent-foreground" disabled>
+                    Pay Now (demo)
+                  </Button>
                 )}
               </CardContent>
             </Card>

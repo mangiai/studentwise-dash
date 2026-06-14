@@ -26,11 +26,12 @@ function resolveUserRole(
   const metaRole =
     typeof appMetadata?.role === "string" ? (appMetadata.role as UserRole) : undefined;
   const fromProfile =
-    profileRole === "admin" || profileRole === "teacher" || profileRole === "student"
+    profileRole === "admin" || profileRole === "teacher" || profileRole === "student" || profileRole === "moderator"
       ? (profileRole as UserRole)
       : undefined;
 
   if (fromProfile === "admin" || metaRole === "admin") return "admin";
+  if (fromProfile === "moderator" || metaRole === "moderator") return "moderator";
   if (fromProfile === "teacher" || metaRole === "teacher") return "teacher";
   return fromProfile ?? metaRole ?? "student";
 }

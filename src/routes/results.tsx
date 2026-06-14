@@ -6,6 +6,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { pageHead } from "@/lib/seo";
 import { requireAuth } from "@/lib/auth-guards";
 import { fetchStudentResults } from "@/lib/supabase/data";
+import { useAuthUser } from "@/hooks/use-auth";
+import { useRealtimeInvalidate } from "@/hooks/use-realtime-invalidate";
 
 export const Route = createFileRoute("/results")({
   head: () => pageHead("Results"),
@@ -24,11 +26,30 @@ function gradeBadge(grade: string) {
 }
 
 function Results() {
-  const { semesters, student } = Route.useLoaderData();
+  const authUser = useAuthUser();
+  const { configured, semesters, student } = Route.useLoaderData();
   const cgpa = student?.gpa ?? 0;
+
+  useRealtimeInvalidate(["course_grades", "notifications"]);
+
+  if (authUser?.role !== "student") {
+    return (
+      <AppLayout title="Academic Results" subtitle="Student grades and semester performance">
+        <Card>
+          <CardContent className="p-6 text-sm text-muted-foreground">
+            Results are available for linked student accounts. Staff can manage grades from{" "}
+            <a href="/admin/students" className="text-primary underline">Admin → Students</a>.
+          </CardContent>
+        </Card>
+      </AppLayout>
+    );
+  }
 
   return (
     <AppLayout title="Academic Results" subtitle="Semester grades loaded from Supabase">
+      {!configured && (
+        <p className="text-sm text-muted-foreground mb-4">Supabase is not connected.</p>
+      )}
       <div className="grid gap-4 sm:grid-cols-3 mb-6">
         <Card>
           <CardContent className="p-5">
@@ -54,7 +75,11 @@ function Results() {
       </div>
 
       {semesters.length === 0 && (
-        <p className="text-sm text-muted-foreground">No grades found for your student profile.</p>
+        <Card>
+          <CardContent className="p-6 text-sm text-muted-foreground">
+            No grades found yet. If you just signed up, ask admin to link your student ID, or sign out and back in with a demo account.
+          </CardContent>
+        </Card>
       )}
 
       <div className="space-y-6">

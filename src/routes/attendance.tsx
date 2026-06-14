@@ -71,7 +71,7 @@ function SessionItem({ session }: { session: SessionRow }) {
 }
 
 function Attendance() {
-  const { rows, summary, sessions, term } = Route.useLoaderData();
+  const { rows, summary, sessions, term, configured } = Route.useLoaderData();
   const overall = summary?.overall ?? 0;
   const termStart = parseISO(ATTENDANCE_TERM_START);
   const termEnd = parseISO(ATTENDANCE_TERM_END);
@@ -130,6 +130,16 @@ function Attendance() {
       title="Attendance"
       subtitle={`${term ?? ATTENDANCE_TERM} · ${format(termStart, "MMM d, yyyy")} – ${format(termEnd, "MMM d, yyyy")}`}
     >
+      {configured && sessions.length === 0 && rows.length === 0 && (
+        <Card className="mb-6 border-dashed">
+          <CardContent className="p-5 text-sm text-muted-foreground">
+            No Fall 2026 class sessions are loaded yet. An admin should run the attendance seed on Supabase
+            (paste <code className="text-xs bg-muted px-1 py-0.5 rounded">supabase/seed-fall-attendance.sql</code> in the SQL Editor,
+            or run <code className="text-xs bg-muted px-1 py-0.5 rounded">npm run db:seed:attendance</code> locally).
+          </CardContent>
+        </Card>
+      )}
+
       <div className="grid gap-4 sm:grid-cols-4 mb-6">
         <Card><CardContent className="p-5">
           <div className="text-xs text-muted-foreground">Overall Attendance</div>

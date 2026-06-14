@@ -276,19 +276,28 @@ export const fetchStudentCourses = createServerFn({ method: "GET" }).handler(asy
 
 async function fetchEnrollmentAttendanceRows(studentId: string) {
   const db = getStudentDataClient();
-  const { data: enrollments } = await db
+  const { data: enrollments, error: enrollError } = await db
     .from("enrollments")
     .select("id, course_id, courses ( id, name )")
     .eq("student_id", studentId)
     .eq("semester", CURRENT_SEMESTER);
 
+  if (enrollError) {
+    console.error("fetchEnrollmentAttendanceRows enrollments:", enrollError.message, { studentId });
+    return [];
+  }
+
   if (!enrollments?.length) return [];
 
   const enrollmentIds = enrollments.map((e) => e.id);
-  const { data: marks } = await db
+  const { data: marks, error: marksError } = await db
     .from("session_attendance")
     .select("enrollment_id, present, class_sessions ( id, session_date, start_time, end_time, room, course_id )")
     .in("enrollment_id", enrollmentIds);
+
+  if (marksError) {
+    console.error("fetchEnrollmentAttendanceRows session_attendance:", marksError.message);
+  }
 
   const byEnrollment = new Map<string, { total: number; attended: number; sessions: typeof marks }>();
   for (const e of enrollments) {

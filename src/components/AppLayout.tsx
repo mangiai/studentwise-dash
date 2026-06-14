@@ -18,7 +18,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { APP_LOGO_SHORT, APP_NAME, APP_TAGLINE } from "@/lib/brand";
 import { NotificationBell } from "@/components/NotificationBell";
-import { CURRENT_SEMESTER } from "@/lib/constants";
+import { ATTENDANCE_TERM, CURRENT_SEMESTER } from "@/lib/constants";
 import type { UserRole } from "@/lib/auth-types";
 import { isStaffRole } from "@/lib/auth-types";
 import { useAuthUser } from "@/hooks/use-auth";
@@ -140,7 +140,7 @@ export function AppLayout({ children, title, subtitle }: { children: React.React
               {subtitle && <p className="text-sm text-muted-foreground mt-1">{subtitle}</p>}
             </div>
             <Badge variant="outline" className="bg-card">
-              {CURRENT_SEMESTER}
+              {path === "/attendance" ? ATTENDANCE_TERM : CURRENT_SEMESTER}
             </Badge>
           </div>
           {children}

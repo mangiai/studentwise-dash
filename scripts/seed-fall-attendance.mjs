@@ -73,10 +73,20 @@ const { data: enrollments, error: enrollError } = await supabase
   .eq("semester", "Spring 2026");
 if (enrollError) throw enrollError;
 
-await supabase.from("session_attendance").delete().neq("id", "00000000-0000-0000-0000-000000000000");
+const { data: existingSessions } = await supabase.from("class_sessions").select("id").eq("term", TERM);
+if (existingSessions?.length) {
+  await supabase
+    .from("session_attendance")
+    .delete()
+    .in(
+      "session_id",
+      existingSessions.map((s) => s.id),
+    );
+}
 await supabase.from("class_sessions").delete().eq("term", TERM);
 
 const sessionsByCourse = new Map();
+let sessionInsertErrors = 0;
 
 for (const course of courses ?? []) {
   const rng = seededRandom(`course-${course.id}`);
@@ -106,6 +116,7 @@ for (const course of courses ?? []) {
 
   if (error) {
     console.error(`Sessions for ${course.id}:`, error.message);
+    sessionInsertErrors += 1;
     continue;
   }
 
@@ -114,6 +125,15 @@ for (const course of courses ?? []) {
 }
 
 const attendanceRows = [];
+
+if (sessionsByCourse.size === 0) {
+  console.error(
+    "\nNo class sessions were created. Run `npm run db:push` first, then retry.",
+    sessionInsertErrors ? `(${sessionInsertErrors} course insert errors)` : "",
+  );
+  console.error("Or paste supabase/seed-fall-attendance.sql in the Supabase SQL Editor.");
+  process.exit(1);
+}
 
 for (const enrollment of enrollments ?? []) {
   const sessions = sessionsByCourse.get(enrollment.course_id) ?? [];

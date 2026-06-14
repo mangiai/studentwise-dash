@@ -22,6 +22,7 @@
     "seed:users": "node scripts/seed-test-users.mjs",
     "seed:all": "node scripts/seed-test-users.mjs",
     "seed:attendance": "node scripts/seed-fall-attendance.mjs",
+    "db:seed:attendance": "supabase db query --linked --file supabase/seed-fall-attendance.sql",
     "db:seed:cloud": "supabase db query --linked --file supabase/seed-cloud-complete.sql",
     "db:seed:auth": "supabase db query --linked --file supabase/seed-auth-users.sql"
   },

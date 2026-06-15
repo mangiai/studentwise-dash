@@ -16,6 +16,10 @@ export type AdminStudent = {
   sem: number;
   fee: string;
   status: string;
+  cnic: string;
+  email: string;
+  phone: string;
+  dateOfBirth: string;
   enrolledCourseIds: string[];
 };
 
@@ -25,6 +29,10 @@ export type AdminTeacher = {
   dept: string;
   courses: number;
   status: string;
+  cnic: string;
+  email: string;
+  phone: string;
+  dateOfBirth: string;
 };
 
 export type AdminCourse = {

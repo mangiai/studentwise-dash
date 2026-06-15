@@ -63,6 +63,10 @@ export type Database = {
           gpa: number | null;
           credits_completed: number;
           credits_required: number;
+          cnic: string | null;
+          email: string | null;
+          phone: string | null;
+          date_of_birth: string | null;
           created_at: string;
         };
         Insert: {
@@ -76,6 +80,10 @@ export type Database = {
           gpa?: number | null;
           credits_completed?: number;
           credits_required?: number;
+          cnic?: string | null;
+          email?: string | null;
+          phone?: string | null;
+          date_of_birth?: string | null;
           created_at?: string;
         };
         Update: {
@@ -89,6 +97,10 @@ export type Database = {
           gpa?: number | null;
           credits_completed?: number;
           credits_required?: number;
+          cnic?: string | null;
+          email?: string | null;
+          phone?: string | null;
+          date_of_birth?: string | null;
           created_at?: string;
         };
         Relationships: [];
@@ -101,6 +113,10 @@ export type Database = {
           department_id: string | null;
           courses_count: number;
           status: "Active" | "Hold" | "On Leave";
+          cnic: string | null;
+          email: string | null;
+          phone: string | null;
+          date_of_birth: string | null;
           created_at: string;
         };
         Insert: {
@@ -110,6 +126,10 @@ export type Database = {
           department_id?: string | null;
           courses_count?: number;
           status?: "Active" | "Hold" | "On Leave";
+          cnic?: string | null;
+          email?: string | null;
+          phone?: string | null;
+          date_of_birth?: string | null;
           created_at?: string;
         };
         Update: {
@@ -119,6 +139,10 @@ export type Database = {
           department_id?: string | null;
           courses_count?: number;
           status?: "Active" | "Hold" | "On Leave";
+          cnic?: string | null;
+          email?: string | null;
+          phone?: string | null;
+          date_of_birth?: string | null;
           created_at?: string;
         };
         Relationships: [];

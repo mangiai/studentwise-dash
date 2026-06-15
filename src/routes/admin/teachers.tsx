@@ -30,6 +30,8 @@ import {
   type AdminTeacher,
 } from "@/lib/admin/shared";
 import { useStaffPermissions } from "@/hooks/use-staff-permissions";
+import { PersonAccountFields } from "@/components/admin/PersonAccountFields";
+import { formatCnic, formatPakistanPhone, validatePersonAccountFields } from "@/lib/admin/person-form";
 import { adminUpsertTeacher, adminDeleteTeacher, adminAssignInstructor } from "@/lib/supabase/data";
 
 export const Route = createFileRoute("/admin/teachers")({
@@ -47,6 +49,11 @@ const emptyTeacherForm = {
   dept: "Computer Science",
   courses: "1",
   status: "Active",
+  email: "",
+  password: "",
+  cnic: "",
+  phone: "",
+  dateOfBirth: "",
 };
 
 function AdminTeachers() {
@@ -69,7 +76,10 @@ function AdminTeachers() {
           !search ||
           matchesSearch(t.name, search) ||
           matchesSearch(t.id, search) ||
-          matchesSearch(t.dept, search),
+          matchesSearch(t.dept, search) ||
+          matchesSearch(t.email, search) ||
+          matchesSearch(t.phone, search) ||
+          matchesSearch(t.cnic, search),
       ),
     [teachers, search],
   );
@@ -85,6 +95,11 @@ function AdminTeachers() {
         dept: teacher.dept,
         courses: String(teacher.courses),
         status: teacher.status,
+        email: teacher.email,
+        password: "",
+        cnic: teacher.cnic ? formatCnic(teacher.cnic) : "",
+        phone: teacher.phone ? formatPakistanPhone(teacher.phone) : "",
+        dateOfBirth: teacher.dateOfBirth,
       });
     } else {
       setEditingTeacherId(null);
@@ -99,6 +114,21 @@ function AdminTeachers() {
       return;
     }
 
+    const accountError = validatePersonAccountFields(
+      {
+        email: teacherForm.email,
+        password: teacherForm.password,
+        cnic: teacherForm.cnic,
+        dateOfBirth: teacherForm.dateOfBirth,
+        phone: teacherForm.phone,
+      },
+      { requirePassword: !editingTeacherId },
+    );
+    if (accountError) {
+      toast.error(accountError);
+      return;
+    }
+
     try {
       await adminUpsertTeacher({
         data: {
@@ -107,6 +137,12 @@ function AdminTeachers() {
           dept: teacherForm.dept,
           courses: Number(teacherForm.courses) || 1,
           status: teacherForm.status as "Active" | "Hold" | "On Leave",
+          email: teacherForm.email.trim(),
+          cnic: teacherForm.cnic,
+          phone: teacherForm.phone,
+          dateOfBirth: teacherForm.dateOfBirth,
+          password: teacherForm.password || undefined,
+          isNew: !editingTeacherId,
         },
       });
       toast.success(editingTeacherId ? "Teacher updated" : "Teacher added");
@@ -178,6 +214,9 @@ function AdminTeachers() {
               <TableRow>
                 <TableHead>Name</TableHead>
                 <TableHead>Employee ID</TableHead>
+                <TableHead>CNIC</TableHead>
+                <TableHead>Email</TableHead>
+                <TableHead>Phone</TableHead>
                 <TableHead>Department</TableHead>
                 <TableHead className="text-center">Courses</TableHead>
                 <TableHead>Status</TableHead>
@@ -187,7 +226,7 @@ function AdminTeachers() {
             <TableBody>
               {filteredTeachers.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
+                  <TableCell colSpan={9} className="text-center text-muted-foreground py-8">
                     No teachers found.
                   </TableCell>
                 </TableRow>
@@ -196,6 +235,13 @@ function AdminTeachers() {
                 <TableRow key={t.id}>
                   <TableCell className="font-medium">{t.name}</TableCell>
                   <TableCell className="font-mono text-xs text-muted-foreground">{t.id}</TableCell>
+                  <TableCell className="font-mono text-xs text-muted-foreground">
+                    {t.cnic ? formatCnic(t.cnic) : "—"}
+                  </TableCell>
+                  <TableCell className="text-xs text-muted-foreground">{t.email || "—"}</TableCell>
+                  <TableCell className="font-mono text-xs text-muted-foreground">
+                    {t.phone ? formatPakistanPhone(t.phone) : "—"}
+                  </TableCell>
                   <TableCell>{t.dept}</TableCell>
                   <TableCell className="text-center">{t.courses}</TableCell>
                   <TableCell>{statusBadge(t.status)}</TableCell>
@@ -242,7 +288,7 @@ function AdminTeachers() {
           }
         }}
       >
-        <DialogContent>
+        <DialogContent className="max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{editingTeacherId ? "Edit Teacher" : "Add Teacher"}</DialogTitle>
             <DialogDescription>
@@ -269,6 +315,20 @@ function AdminTeachers() {
                 disabled={!!editingTeacherId}
               />
             </div>
+
+            <PersonAccountFields
+              idPrefix="t"
+              requirePassword={!editingTeacherId}
+              values={{
+                email: teacherForm.email,
+                password: teacherForm.password,
+                cnic: teacherForm.cnic,
+                dateOfBirth: teacherForm.dateOfBirth,
+                phone: teacherForm.phone,
+              }}
+              onChange={(patch) => setTeacherForm({ ...teacherForm, ...patch })}
+            />
+
             <div className="grid grid-cols-2 gap-3">
               <div className="grid gap-2">
                 <Label>Department</Label>

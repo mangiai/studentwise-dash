@@ -34,6 +34,8 @@ import {
 } from "@/lib/admin/shared";
 import { CURRENT_SEMESTER } from "@/lib/constants";
 import { useStaffPermissions } from "@/hooks/use-staff-permissions";
+import { PersonAccountFields } from "@/components/admin/PersonAccountFields";
+import { formatCnic, formatPakistanPhone, validatePersonAccountFields } from "@/lib/admin/person-form";
 import {
   adminUpsertStudent,
   adminDeleteStudent,
@@ -59,6 +61,11 @@ const emptyStudentForm = {
   fee: "Pending",
   status: "Active",
   courseId: "none",
+  email: "",
+  password: "",
+  cnic: "",
+  phone: "",
+  dateOfBirth: "",
 };
 
 function AdminStudents() {
@@ -88,7 +95,10 @@ function AdminStudents() {
           !search ||
           matchesSearch(s.name, search) ||
           matchesSearch(s.id, search) ||
-          matchesSearch(s.dept, search),
+          matchesSearch(s.dept, search) ||
+          matchesSearch(s.email, search) ||
+          matchesSearch(s.phone, search) ||
+          matchesSearch(s.cnic, search),
       ),
     [students, search],
   );
@@ -107,6 +117,11 @@ function AdminStudents() {
         fee: student.fee,
         status: student.status,
         courseId: "none",
+        email: student.email,
+        password: "",
+        cnic: student.cnic ? formatCnic(student.cnic) : "",
+        phone: student.phone ? formatPakistanPhone(student.phone) : "",
+        dateOfBirth: student.dateOfBirth,
       });
     } else {
       setEditingStudentId(null);
@@ -121,6 +136,21 @@ function AdminStudents() {
       return;
     }
 
+    const accountError = validatePersonAccountFields(
+      {
+        email: studentForm.email,
+        password: studentForm.password,
+        cnic: studentForm.cnic,
+        dateOfBirth: studentForm.dateOfBirth,
+        phone: studentForm.phone,
+      },
+      { requirePassword: !editingStudentId },
+    );
+    if (accountError) {
+      toast.error(accountError);
+      return;
+    }
+
     try {
       await adminUpsertStudent({
         data: {
@@ -130,6 +160,12 @@ function AdminStudents() {
           sem: Number(studentForm.sem) || 1,
           fee: studentForm.fee as "Paid" | "Pending" | "Overdue",
           status: studentForm.status as "Active" | "Hold" | "On Leave",
+          email: studentForm.email.trim(),
+          cnic: studentForm.cnic,
+          phone: studentForm.phone,
+          dateOfBirth: studentForm.dateOfBirth,
+          password: studentForm.password || undefined,
+          isNew: !editingStudentId,
         },
       });
 
@@ -241,6 +277,9 @@ function AdminStudents() {
               <TableRow>
                 <TableHead>Student</TableHead>
                 <TableHead>ID</TableHead>
+                <TableHead>CNIC</TableHead>
+                <TableHead>Email</TableHead>
+                <TableHead>Phone</TableHead>
                 <TableHead>Department</TableHead>
                 <TableHead className="text-center">Sem</TableHead>
                 <TableHead className="text-center">Courses</TableHead>
@@ -252,7 +291,7 @@ function AdminStudents() {
             <TableBody>
               {filteredStudents.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
+                  <TableCell colSpan={11} className="text-center text-muted-foreground py-8">
                     No students found.
                   </TableCell>
                 </TableRow>
@@ -270,6 +309,13 @@ function AdminStudents() {
                     </div>
                   </TableCell>
                   <TableCell className="font-mono text-xs text-muted-foreground">{s.id}</TableCell>
+                  <TableCell className="font-mono text-xs text-muted-foreground">
+                    {s.cnic ? formatCnic(s.cnic) : "—"}
+                  </TableCell>
+                  <TableCell className="text-xs text-muted-foreground">{s.email || "—"}</TableCell>
+                  <TableCell className="font-mono text-xs text-muted-foreground">
+                    {s.phone ? formatPakistanPhone(s.phone) : "—"}
+                  </TableCell>
                   <TableCell>{s.dept}</TableCell>
                   <TableCell className="text-center">{s.sem}</TableCell>
                   <TableCell className="text-center">
@@ -365,6 +411,20 @@ function AdminStudents() {
                 disabled={!!editingStudentId}
               />
             </div>
+
+            <PersonAccountFields
+              idPrefix="s"
+              requirePassword={!editingStudentId}
+              values={{
+                email: studentForm.email,
+                password: studentForm.password,
+                cnic: studentForm.cnic,
+                dateOfBirth: studentForm.dateOfBirth,
+                phone: studentForm.phone,
+              }}
+              onChange={(patch) => setStudentForm({ ...studentForm, ...patch })}
+            />
+
             <div className="grid grid-cols-2 gap-3">
               <div className="grid gap-2">
                 <Label>Department</Label>

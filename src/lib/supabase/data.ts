@@ -8,6 +8,15 @@ import {
 import type { AuthUser, UserRole } from "@/lib/auth-types";
 import { isStaffRole } from "@/lib/auth-types";
 import { CURRENT_SEMESTER, ATTENDANCE_TERM } from "@/lib/constants";
+import {
+  cnicSchema,
+  dateOfBirthSchema,
+  normalizeCnic,
+  normalizePakistanPhone,
+  passwordSchema,
+  phoneSchema,
+  portalEmailSchema,
+} from "@/lib/validation/person-fields";
 
 async function getSessionUser() {
   const supabase = getSupabaseServerClient();
@@ -829,8 +838,8 @@ export const fetchAdminData = createServerFn({ method: "GET" }).handler(async ()
 
   const [{ data: students }, { data: teachers }, { data: courses }, { data: enrollments }] =
     await Promise.all([
-      admin.from("students").select("id, name, semester, fee_status, status, departments ( name )").order("name"),
-      admin.from("teachers").select("id, name, courses_count, status, departments ( name )").order("name"),
+      admin.from("students").select("id, name, semester, fee_status, status, cnic, email, phone, date_of_birth, departments ( name )").order("name"),
+      admin.from("teachers").select("id, name, courses_count, status, cnic, email, phone, date_of_birth, departments ( name )").order("name"),
       admin.from("courses").select("id, name, credits, instructor_id, teachers ( name )").order("name"),
       admin.from("enrollments").select("course_id, student_id").eq("semester", CURRENT_SEMESTER),
     ]);
@@ -856,6 +865,10 @@ export const fetchAdminData = createServerFn({ method: "GET" }).handler(async ()
       sem: s.semester,
       fee: s.fee_status,
       status: s.status,
+      cnic: s.cnic ?? "",
+      email: s.email ?? "",
+      phone: s.phone ?? "",
+      dateOfBirth: s.date_of_birth ?? "",
       enrolledCourseIds: enrolledByStudent.get(s.id) ?? [],
     })),
     teachers: (teachers ?? []).map((t) => ({
@@ -864,6 +877,10 @@ export const fetchAdminData = createServerFn({ method: "GET" }).handler(async ()
       dept: t.departments?.name ?? "—",
       courses: t.courses_count,
       status: t.status,
+      cnic: t.cnic ?? "",
+      email: t.email ?? "",
+      phone: t.phone ?? "",
+      dateOfBirth: t.date_of_birth ?? "",
     })),
     courses: (courses ?? []).map((c) => ({
       id: c.id,
@@ -883,14 +900,214 @@ const studentSchema = z.object({
   sem: z.number().min(1).max(12),
   fee: z.enum(["Paid", "Pending", "Overdue"]),
   status: z.enum(["Active", "Hold", "On Leave"]),
+  email: portalEmailSchema,
+  phone: phoneSchema,
+  cnic: cnicSchema,
+  dateOfBirth: dateOfBirthSchema,
+  password: z.string().optional(),
+  isNew: z.boolean().optional(),
 });
 
+const teacherSchema = z.object({
+  id: z.string().min(1),
+  name: z.string().min(1),
+  dept: z.string().min(1),
+  courses: z.number().min(0),
+  status: z.enum(["Active", "Hold", "On Leave"]),
+  email: portalEmailSchema,
+  phone: phoneSchema,
+  cnic: cnicSchema,
+  dateOfBirth: dateOfBirthSchema,
+  password: z.string().optional(),
+  isNew: z.boolean().optional(),
+});
+
+async function assertUniquePersonIdentity(
+  admin: ReturnType<typeof getSupabaseServiceClient>,
+  table: "students" | "teachers",
+  params: { id: string; cnic: string; email: string; phone: string },
+) {
+  const cnic = normalizeCnic(params.cnic)!;
+  const email = params.email.trim().toLowerCase();
+  const phone = normalizePakistanPhone(params.phone)!;
+
+  const { data: cnicRow } = await admin
+    .from(table)
+    .select("id")
+    .eq("cnic", cnic)
+    .neq("id", params.id)
+    .maybeSingle();
+  if (cnicRow) throw new Error("This CNIC is already registered.");
+
+  const { data: emailRow } = await admin
+    .from(table)
+    .select("id")
+    .eq("email", email)
+    .neq("id", params.id)
+    .maybeSingle();
+  if (emailRow) throw new Error("This email is already used by another record.");
+
+  const { data: phoneRow } = await admin
+    .from(table)
+    .select("id")
+    .eq("phone", phone)
+    .neq("id", params.id)
+    .maybeSingle();
+  if (phoneRow) throw new Error("This phone number is already registered.");
+}
+
+async function provisionPortalAccount(
+  admin: ReturnType<typeof getSupabaseServiceClient>,
+  params: {
+    email: string;
+    password: string;
+    fullName: string;
+    role: "student" | "teacher";
+    existingUserId?: string | null;
+  },
+) {
+  const email = params.email.trim().toLowerCase();
+
+  if (params.existingUserId) {
+    const { error } = await admin.auth.admin.updateUserById(params.existingUserId, {
+      email,
+      password: params.password,
+      email_confirm: true,
+      app_metadata: { role: params.role },
+      user_metadata: { full_name: params.fullName },
+    });
+    if (error) throw new Error(error.message);
+
+    await admin.from("profiles").upsert({
+      id: params.existingUserId,
+      full_name: params.fullName,
+      role: params.role,
+    });
+    return params.existingUserId;
+  }
+
+  const { data, error } = await admin.auth.admin.createUser({
+    email,
+    password: params.password,
+    email_confirm: true,
+    app_metadata: { role: params.role },
+    user_metadata: { full_name: params.fullName },
+  });
+  if (error) throw new Error(error.message);
+
+  await admin.from("profiles").upsert({
+    id: data.user.id,
+    full_name: params.fullName,
+    role: params.role,
+  });
+
+  return data.user.id;
+}
+
+async function syncLinkedPortalAccount(
+  admin: ReturnType<typeof getSupabaseServiceClient>,
+  params: {
+    table: "students" | "teachers";
+    recordId: string;
+    email: string;
+    password?: string;
+    fullName: string;
+    role: "student" | "teacher";
+    isNew: boolean;
+  },
+) {
+  const email = params.email.trim().toLowerCase();
+
+  const { data: record } = await admin
+    .from(params.table)
+    .select("user_id")
+    .eq("id", params.recordId)
+    .maybeSingle();
+
+  if (params.isNew) {
+    if (!params.password) throw new Error("Password is required when creating an account.");
+    passwordSchema.parse(params.password);
+
+    const userId = await provisionPortalAccount(admin, {
+      email,
+      password: params.password,
+      fullName: params.fullName,
+      role: params.role,
+      existingUserId: record?.user_id,
+    });
+    return userId;
+  }
+
+  if (record?.user_id) {
+    const updates: {
+      email: string;
+      email_confirm: boolean;
+      password?: string;
+      user_metadata: { full_name: string };
+    } = {
+      email,
+      email_confirm: true,
+      user_metadata: { full_name: params.fullName },
+    };
+    if (params.password) {
+      passwordSchema.parse(params.password);
+      updates.password = params.password;
+    }
+    const { error } = await admin.auth.admin.updateUserById(record.user_id, updates);
+    if (error) throw new Error(error.message);
+
+    await admin.from("profiles").upsert({
+      id: record.user_id,
+      full_name: params.fullName,
+      role: params.role,
+    });
+    return record.user_id;
+  }
+
+  if (!params.password) return null;
+
+  passwordSchema.parse(params.password);
+  const userId = await provisionPortalAccount(admin, {
+    email,
+    password: params.password,
+    fullName: params.fullName,
+    role: params.role,
+  });
+  return userId;
+}
 export const adminUpsertStudent = createServerFn({ method: "POST" })
   .validator((d: unknown) => studentSchema.parse(d))
   .handler(async ({ data }) => {
     await requireStaffUser();
     const admin = getSupabaseServiceClient();
+    const isNew = data.isNew ?? false;
+
+    if (isNew && !data.password) {
+      throw new Error("Password is required when creating a student account.");
+    }
+
+    const cnic = normalizeCnic(data.cnic)!;
+    const email = data.email.trim().toLowerCase();
+    const phone = normalizePakistanPhone(data.phone)!;
+
+    await assertUniquePersonIdentity(admin, "students", {
+      id: data.id,
+      cnic,
+      email,
+      phone,
+    });
+
     const { data: dept } = await admin.from("departments").select("id").eq("name", data.dept).maybeSingle();
+
+    const userId = await syncLinkedPortalAccount(admin, {
+      table: "students",
+      recordId: data.id,
+      email,
+      password: data.password,
+      fullName: data.name,
+      role: "student",
+      isNew,
+    });
 
     const { error } = await admin.from("students").upsert({
       id: data.id,
@@ -899,6 +1116,11 @@ export const adminUpsertStudent = createServerFn({ method: "POST" })
       semester: data.sem,
       fee_status: data.fee,
       status: data.status,
+      cnic,
+      email,
+      phone,
+      date_of_birth: data.dateOfBirth,
+      user_id: userId ?? undefined,
     });
 
     if (error) throw new Error(error.message);
@@ -915,20 +1137,40 @@ export const adminDeleteStudent = createServerFn({ method: "POST" })
     return { ok: true as const };
   });
 
-const teacherSchema = z.object({
-  id: z.string().min(1),
-  name: z.string().min(1),
-  dept: z.string().min(1),
-  courses: z.number().min(0),
-  status: z.enum(["Active", "Hold", "On Leave"]),
-});
 
 export const adminUpsertTeacher = createServerFn({ method: "POST" })
   .validator((d: unknown) => teacherSchema.parse(d))
   .handler(async ({ data }) => {
     await requireStaffUser();
     const admin = getSupabaseServiceClient();
+    const isNew = data.isNew ?? false;
+
+    if (isNew && !data.password) {
+      throw new Error("Password is required when creating a teacher account.");
+    }
+
+    const cnic = normalizeCnic(data.cnic)!;
+    const email = data.email.trim().toLowerCase();
+    const phone = normalizePakistanPhone(data.phone)!;
+
+    await assertUniquePersonIdentity(admin, "teachers", {
+      id: data.id,
+      cnic,
+      email,
+      phone,
+    });
+
     const { data: dept } = await admin.from("departments").select("id").eq("name", data.dept).maybeSingle();
+
+    const userId = await syncLinkedPortalAccount(admin, {
+      table: "teachers",
+      recordId: data.id,
+      email,
+      password: data.password,
+      fullName: data.name,
+      role: "teacher",
+      isNew,
+    });
 
     const { error } = await admin.from("teachers").upsert({
       id: data.id,
@@ -936,6 +1178,11 @@ export const adminUpsertTeacher = createServerFn({ method: "POST" })
       department_id: dept?.id ?? null,
       courses_count: data.courses,
       status: data.status,
+      cnic,
+      email,
+      phone,
+      date_of_birth: data.dateOfBirth,
+      user_id: userId ?? undefined,
     });
 
     if (error) throw new Error(error.message);

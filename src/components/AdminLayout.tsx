@@ -65,7 +65,7 @@ export function AdminLayout({ children, title, subtitle }: { children: React.Rea
             {APP_LOGO_SHORT}
           </div>
           <div className="leading-tight">
-            <div className="font-semibold tracking-tight">{APP_NAME}</div>
+            <div className="font-bold tracking-tight text-base">{APP_NAME}</div>
             <div className="text-[11px] opacity-70">Staff Portal</div>
           </div>
         </div>
@@ -128,7 +128,7 @@ export function AdminLayout({ children, title, subtitle }: { children: React.Rea
         <main className="p-3 sm:p-4 lg:p-8 flex-1 min-w-0">
           <div className="mb-4 sm:mb-6 flex items-start sm:items-end justify-between flex-wrap gap-3 animate-fade-in-up">
             <div className="min-w-0">
-              <h1 className="text-xl sm:text-2xl font-semibold tracking-tight">{title}</h1>
+              <h1 className="text-xl sm:text-2xl font-extrabold tracking-tight">{title}</h1>
               {subtitle && <p className="text-xs sm:text-sm text-muted-foreground mt-1">{subtitle}</p>}
             </div>
             <Badge variant="outline" className="bg-card shrink-0">

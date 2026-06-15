@@ -53,13 +53,13 @@ function AdminLogin() {
             <ShieldCheck className="size-5" />
           </div>
           <div>
-            <div className="font-semibold text-lg">{APP_NAME}</div>
+            <div className="font-bold text-lg">{APP_NAME}</div>
             <div className="text-xs opacity-70">Staff Portal</div>
           </div>
         </div>
 
         <div className="relative space-y-6 max-w-md animate-fade-in-up" style={{ animationDelay: "80ms" }}>
-          <h2 className="text-3xl font-semibold leading-tight">
+          <h2 className="text-3xl font-extrabold leading-tight">
             Secure staff access for university administrators and moderators.
           </h2>
           <p className="text-sm opacity-80">
@@ -90,9 +90,9 @@ function AdminLogin() {
             <div className="size-10 rounded-xl gradient-primary grid place-content-center text-primary-foreground shadow-lg shadow-primary/30">
               <ShieldCheck className="size-5" />
             </div>
-            <span className="font-semibold text-lg">{APP_NAME} Staff</span>
+            <span className="font-bold text-lg">{APP_NAME} Staff</span>
           </div>
-          <h1 className="text-2xl font-semibold tracking-tight">Staff sign in</h1>
+          <h1 className="text-2xl font-extrabold tracking-tight">Staff sign in</h1>
           <p className="text-sm text-muted-foreground mt-1">
             Use your staff credentials to access the admin dashboard.
           </p>

@@ -73,11 +73,11 @@ function Signup() {
             <div className="size-10 rounded-xl bg-primary grid place-content-center text-primary-foreground">
               <GraduationCap className="size-5" />
             </div>
-            <span className="font-semibold text-lg">{APP_NAME}</span>
+            <span className="font-bold text-lg">{APP_NAME}</span>
           </div>
-          <h1 className="text-2xl font-semibold tracking-tight">Create your account</h1>
+          <h1 className="text-2xl font-extrabold tracking-tight">Create your account</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Join StudentWise — manage your academic life with ease.
+            Join {APP_NAME} — manage your academic life with ease.
           </p>
         </div>
 

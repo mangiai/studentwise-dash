@@ -1,6 +1,6 @@
 {
-  "name": "StudentWise — University Portal",
-  "short_name": "StudentWise",
+  "name": "UniFlow — University Portal",
+  "short_name": "UniFlow",
   "description": "Manage courses, attendance, fees, and academic progress in one place.",
   "start_url": "/",
   "display": "standalone",

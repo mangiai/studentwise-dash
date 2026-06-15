@@ -55,13 +55,13 @@ function Login() {
             <GraduationCap className="size-5" />
           </div>
           <div>
-            <div className="font-semibold text-lg">{APP_NAME}</div>
+            <div className="font-bold text-lg">{APP_NAME}</div>
             <div className="text-xs opacity-70">{APP_TAGLINE}</div>
           </div>
         </div>
 
         <div className="relative space-y-6 max-w-md animate-fade-in-up" style={{ animationDelay: "80ms" }}>
-          <h2 className="text-3xl font-semibold leading-tight">
+          <h2 className="text-3xl font-extrabold leading-tight">
             Empowering students, faculty, and admins — all in one place.
           </h2>
           <p className="text-sm opacity-80">
@@ -93,9 +93,9 @@ function Login() {
             <div className="size-10 rounded-xl gradient-primary grid place-content-center text-primary-foreground shadow-lg shadow-primary/30">
               <GraduationCap className="size-5" />
             </div>
-            <span className="font-semibold text-lg">{APP_NAME}</span>
+            <span className="font-bold text-lg">{APP_NAME}</span>
           </div>
-          <h1 className="text-2xl font-semibold tracking-tight">Welcome back</h1>
+          <h1 className="text-2xl font-extrabold tracking-tight">Welcome back</h1>
           <p className="text-sm text-muted-foreground mt-1">Sign in to your account to continue.</p>
 
           <form className="mt-8 space-y-4" onSubmit={handleSubmit}>

@@ -97,7 +97,7 @@ export function MobileNavBar({ items, path, primaryCount = 4 }: MobileNavBarProp
             </SheetTrigger>
             <SheetContent side="bottom" className="rounded-t-2xl pb-[env(safe-area-inset-bottom)]">
               <SheetHeader className="text-left pb-2">
-                <SheetTitle className="flex items-center gap-2 text-base">
+                <SheetTitle className="flex items-center gap-2 text-base font-bold">
                   <span className="size-8 rounded-lg bg-primary text-primary-foreground grid place-content-center text-xs font-bold">
                     {APP_LOGO_SHORT}
                   </span>
@@ -160,7 +160,7 @@ export function MobileMenuButton({ items, path, title = APP_NAME }: MobileMenuBu
       </SheetTrigger>
       <SheetContent side="left" className="w-[min(100vw-2rem,18rem)] p-0 bg-sidebar text-sidebar-foreground border-sidebar-border">
         <SheetHeader className="p-4 border-b border-sidebar-border text-left">
-          <SheetTitle className="flex items-center gap-2 text-sidebar-foreground">
+          <SheetTitle className="flex items-center gap-2 text-sidebar-foreground font-bold">
             <span className="size-9 rounded-lg bg-sidebar-primary text-sidebar-primary-foreground grid place-content-center text-sm font-bold">
               {APP_LOGO_SHORT}
             </span>

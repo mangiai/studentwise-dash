@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="StudentWise">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="UniFlow">
   <defs>
     <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
       <stop offset="0%" stop-color="#9F1239"/>
@@ -7,5 +7,5 @@
     </linearGradient>
   </defs>
   <rect width="64" height="64" rx="16" fill="url(#bg)"/>
-  <text x="32" y="42" text-anchor="middle" font-family="Plus Jakarta Sans, Inter, system-ui, sans-serif" font-size="22" font-weight="800" fill="#FFFFFF">SW</text>
+  <text x="32" y="42" text-anchor="middle" font-family="Plus Jakarta Sans, Inter, system-ui, sans-serif" font-size="20" font-weight="800" fill="#FFFFFF">UF</text>
 </svg>

@@ -1,3 +1,5 @@
+import { APP_NAME } from "@/lib/brand";
+
 export function openFeeInvoice(invoice: {
   challanNo: string;
   semester: string;
@@ -29,7 +31,7 @@ export function openFeeInvoice(invoice: {
   .box{border:1px solid #ddd;border-radius:8px;padding:16px;margin-top:16px}
 </style></head><body>
   <div class="header">
-    <div><h1>StudentWise University</h1><div class="muted">Semester Fee Challan (Demo)</div></div>
+    <div><h1>${APP_NAME} University</h1><div class="muted">Semester Fee Challan (Demo)</div></div>
     <div style="text-align:right"><div class="muted">Challan No.</div><div><strong>${invoice.challanNo}</strong></div></div>
   </div>
   <div class="box">

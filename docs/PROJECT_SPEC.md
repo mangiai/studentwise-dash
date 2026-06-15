@@ -1,39 +1,41 @@
-# StudentWise — Full Project Specification
+# UniFlow — Full Project Specification
 
 > **Document purpose:** Presentation-ready spec for PPT slides  
-> **Project:** StudentWise University Portal Dashboard  
+> **Project:** UniFlow University Portal Dashboard  
 > **Repository:** [github.com/mangiai/studentwise-dash](https://github.com/mangiai/studentwise-dash)  
-> **Last updated:** June 10, 2026
+> **Last updated:** June 15, 2026
 
 ---
 
 ## 1. Executive Summary
 
-**StudentWise** is a full-stack university portal that lets students, teachers, and administrators manage courses, attendance, fees, grades, and notifications from a single dashboard. The app is built with **React 19 + TanStack Start**, deployed on **Vercel**, and backed by **Supabase Postgres** with Row Level Security (RLS).
+**UniFlow** is a full-stack university portal that lets students, teachers, and staff manage courses, attendance, fees, grades, and notifications from a single dashboard. The app is built with **React 19 + TanStack Start**, deployed on **Vercel**, and backed by **Supabase Postgres** with Row Level Security (RLS) and Realtime subscriptions.
 
 | Attribute | Value |
 |-----------|-------|
-| **Product name** | StudentWise |
+| **Product name** | UniFlow |
 | **Tagline** | University Portal |
 | **Package name** | `studentwise-dash` |
 | **Local dev URL** | http://localhost:3000 |
 | **Production URL** | https://studentwise-dash.vercel.app *(configure in Vercel)* |
 | **GitHub** | https://github.com/mangiai/studentwise-dash |
-| **Source files** | ~86 TypeScript/TSX files (~9,400 lines) |
-| **Total commits** | 11 (single-day sprint: June 10, 2026) |
+| **Source files** | ~103 TypeScript/TSX files (~12,400 lines) |
+| **Total commits** | 28 (sprint: June 10–15, 2026) |
 
 ---
 
 ## 2. Problem Statement & Goals
 
 ### Problem
-Universities need a centralized digital portal where students can track academic progress, fees, and attendance; teachers can view analytics; and admins can manage enrollment data — without juggling multiple disconnected systems.
+Universities need a centralized digital portal where students can track academic progress, fees, and attendance; teachers can view analytics; and staff can manage enrollment data — without juggling multiple disconnected systems.
 
 ### Goals Achieved
-- Role-based portal for **students**, **teachers**, and **admins**
+- Role-based portal for **students**, **teachers**, **admins**, and **moderators**
 - Live data from Supabase (not static mock data)
 - Secure authentication with session cookies (SSR-compatible)
-- Admin CRUD for students, teachers, courses, and enrollments
+- Staff CRUD for students, teachers, courses, enrollments, attendance, fees, and notifications
+- Session-level attendance tracking with auto-synced summaries
+- Real-time UI updates via Supabase Realtime
 - Production deployment on Vercel with Nitro serverless functions
 - Demo-ready seed data and test accounts for presentations
 
@@ -63,6 +65,7 @@ Universities need a centralized digital portal where students can track academic
 | **Supabase Auth** | Email/password authentication |
 | **@supabase/ssr** | Cookie-based sessions for SSR |
 | **Row Level Security (RLS)** | Per-role data access policies |
+| **Supabase Realtime** | Live invalidation on enrollments, fees, grades, attendance, notifications |
 | **pgcrypto** | Password hashing for seed users |
 
 ### Build, Deploy & Tooling
@@ -81,17 +84,18 @@ Universities need a centralized digital portal where students can track academic
 ┌─────────────────────────────────────────────────────────────┐
 │                     Browser (React 19)                       │
 │  TanStack Router │ shadcn/ui │ Recharts │ Tailwind CSS v4   │
+│  Realtime hooks  │ MobileNavBar │ NotificationBell           │
 └──────────────────────────┬──────────────────────────────────┘
                            │ HTTP / Cookies
 ┌──────────────────────────▼──────────────────────────────────┐
 │              Vercel (Nitro Serverless Functions)             │
 │         TanStack Start Server Functions (SSR)                │
-│    auth guards │ data loaders │ admin CRUD mutations           │
+│    auth guards │ data loaders │ staff CRUD mutations         │
 └──────────────────────────┬──────────────────────────────────┘
                            │ Supabase JS Client
 ┌──────────────────────────▼──────────────────────────────────┐
 │                    Supabase Cloud                            │
-│   Auth (GoTrue) │ Postgres + RLS │ Realtime (ready)          │
+│   Auth (GoTrue) │ Postgres + RLS │ Realtime (active)         │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -103,13 +107,19 @@ Universities need a centralized digital portal where students can track academic
 |------|-----------|--------|
 | **Student** | `/login` | Dashboard, courses, attendance, fees, teachers, results, notifications, settings |
 | **Teacher** | `/login` | All student pages + **Reports & Analytics** |
-| **Admin** | `/admin/login` | Full portal + **Admin Dashboard** (CRUD) |
+| **Admin** | `/admin/login` | Full staff portal — CRUD + **delete** permissions |
+| **Moderator** | `/admin/login` | Staff portal — CRUD **without delete** |
+
+### Staff vs Admin
+- **Staff** = `admin` or `moderator` (shared staff portal at `/admin/*`)
+- **Moderators** can create and edit records but cannot delete students, teachers, or courses
+- Enforced in UI via `useStaffPermissions()` and in RLS via `is_staff()` / `is_admin()` helpers
 
 ### Auth Guards
 - `requireAuth` — redirects unauthenticated users to `/login`
 - `requireGuest` — redirects signed-in users away from login/signup
-- `requireAdmin` — restricts admin routes to `role = admin`
-- `requireAdminGuest` — admin login page guard
+- `requireStaff` — restricts staff routes to `admin` or `moderator`
+- `requireStaffGuest` — staff login page guard (redirects signed-in staff to `/admin/dashboard`)
 
 ### Session Model
 - Supabase Auth with **HTTP cookies** via `@supabase/ssr`
@@ -128,21 +138,21 @@ Universities need a centralized digital portal where students can track academic
 |---------|-------|------|-------------|
 | **Home redirect** | `/` | `{BASE_URL}/` | Redirects to `/dashboard` if logged in, else `/login` |
 | **Student/Teacher Login** | `/login` | `{BASE_URL}/login` | Email + password sign-in |
-| **Admin Login** | `/admin/login` | `{BASE_URL}/admin/login` | Separate admin portal entry |
+| **Staff Login** | `/admin/login` | `{BASE_URL}/admin/login` | Admin & moderator portal entry |
 | **Sign Up** | `/signup` | `{BASE_URL}/signup` | New student registration + student ID linking |
 
 ### 5.2 Student & Shared Portal Routes
 
 | Feature | Route | Link | Roles | Live Data |
 |---------|-------|------|-------|-----------|
-| **Dashboard** | `/dashboard` | `{BASE_URL}/dashboard` | All | ✅ Stats, charts, GPA, attendance overview |
-| **My Courses** | `/courses` | `{BASE_URL}/courses` | All | ✅ Enrollments, credits, attendance badges |
-| **Attendance** | `/attendance` | `{BASE_URL}/attendance` | All | ✅ Per-course %, ring charts, short-attendance alerts |
-| **Fee Management** | `/fees` | `{BASE_URL}/fees` | Student, Admin | ✅ Semester balance, payment history (PKR) |
-| **Faculty Directory** | `/teachers` | `{BASE_URL}/teachers` | All | ✅ Teacher cards from database |
-| **Academic Results** | `/results` | `{BASE_URL}/results` | All | ✅ Semester grades, CGPA, grade badges |
-| **Notifications** | `/notifications` | `{BASE_URL}/notifications` | All | ✅ Fee, attendance, course, announcement alerts |
-| **Settings** | `/settings` | `{BASE_URL}/settings` | All | Profile, notification preferences (UI) |
+| **Dashboard** | `/dashboard` | `{BASE_URL}/dashboard` | Student, Teacher, Admin | ✅ Stats, charts, GPA, attendance overview |
+| **My Courses** | `/courses` | `{BASE_URL}/courses` | Student, Teacher, Admin | ✅ Enrollments, credits, attendance badges |
+| **Attendance** | `/attendance` | `{BASE_URL}/attendance` | Student, Teacher, Admin | ✅ Per-course %, ring charts, short-attendance alerts |
+| **Fee Management** | `/fees` | `{BASE_URL}/fees` | Student, Admin | ✅ Semester balance, payment history, fee challan (PKR) |
+| **Faculty Directory** | `/teachers` | `{BASE_URL}/teachers` | Student, Teacher, Admin | ✅ Teacher cards from database |
+| **Academic Results** | `/results` | `{BASE_URL}/results` | Student, Teacher, Admin | ✅ Semester grades, CGPA, grade badges |
+| **Notifications** | `/notifications` | `{BASE_URL}/notifications` | Student, Teacher, Admin | ✅ Fee, attendance, course, announcement alerts |
+| **Settings** | `/settings` | `{BASE_URL}/settings` | Student, Teacher, Admin | ✅ Profile, notification prefs, password change (persisted) |
 
 ### 5.3 Teacher & Admin Analytics
 
@@ -150,24 +160,33 @@ Universities need a centralized digital portal where students can track academic
 |---------|-------|------|-------|-----------|
 | **Reports & Analytics** | `/reports` | `{BASE_URL}/reports` | Teacher, Admin | ✅ Enrollment trends, fee status, attendance, department charts |
 
-### 5.4 Admin Panel
+### 5.4 Staff Portal (Admin & Moderator)
 
 | Feature | Route | Link | Roles | Live Data |
 |---------|-------|------|-------|-----------|
-| **Admin Dashboard** | `/admin/dashboard` | `{BASE_URL}/admin/dashboard` | Admin only | ✅ Full CRUD operations |
+| **Overview** | `/admin/dashboard` | `{BASE_URL}/admin/dashboard` | Staff | ✅ Summary stats and quick links |
+| **Students** | `/admin/students` | `{BASE_URL}/admin/students` | Staff | ✅ Create / edit students (delete: admin only) |
+| **Teachers** | `/admin/teachers` | `{BASE_URL}/admin/teachers` | Staff | ✅ Create / edit teachers (delete: admin only) |
+| **Courses** | `/admin/courses` | `{BASE_URL}/admin/courses` | Staff | ✅ Create / edit courses, assign instructors |
+| **Enrollments** | `/admin/enrollments` | `{BASE_URL}/admin/enrollments` | Staff | ✅ Enroll / unenroll students in courses |
+| **Attendance** | `/admin/attendance` | `{BASE_URL}/admin/attendance` | Staff | ✅ Mark per-session attendance (Fall 2026 term) |
+| **Fees & Challans** | `/admin/fees` | `{BASE_URL}/admin/fees` | Staff | ✅ Regenerate challans, update fee status |
+| **Notifications** | `/admin/notifications` | `{BASE_URL}/admin/notifications` | Staff | ✅ Create and broadcast user notifications |
 
-**Admin capabilities:**
-- Create / edit / delete **students**
-- Create / edit / delete **teachers**
-- Create / edit / delete **courses**
+**Staff capabilities:**
+- Create / edit **students**, **teachers**, **courses**
 - **Enroll / unenroll** students in courses
 - **Assign instructors** to courses
+- **Mark session attendance** per student per class date
+- **Manage fee challans** — regenerate and update Paid / Pending / Overdue
+- **Send notifications** to individual users
+- **Upsert grades** for students
 - Search and filter across all entities
-- Tabbed interface: Students | Teachers | Courses
+- **Delete** operations restricted to **admin** role only
 
 ### 5.5 Sidebar Navigation (Role-Filtered)
 
-Defined in `AppLayout.tsx` — each link appears only for allowed roles:
+**Student portal** (`AppLayout.tsx`):
 
 | Nav Item | Route | Student | Teacher | Admin |
 |----------|-------|:-------:|:-------:|:-----:|
@@ -178,9 +197,23 @@ Defined in `AppLayout.tsx` — each link appears only for allowed roles:
 | Teachers | `/teachers` | ✅ | ✅ | ✅ |
 | Results | `/results` | ✅ | ✅ | ✅ |
 | Reports | `/reports` | — | ✅ | ✅ |
-| Admin Panel | `/admin/dashboard` | — | — | ✅ |
 | Notifications | `/notifications` | ✅ | ✅ | ✅ |
 | Settings | `/settings` | ✅ | ✅ | ✅ |
+
+**Staff portal** (`AdminLayout.tsx`):
+
+| Nav Item | Route | Admin | Moderator |
+|----------|-------|:-----:|:---------:|
+| Overview | `/admin/dashboard` | ✅ | ✅ |
+| Students | `/admin/students` | ✅ | ✅ |
+| Teachers | `/admin/teachers` | ✅ | ✅ |
+| Courses | `/admin/courses` | ✅ | ✅ |
+| Enrollments | `/admin/enrollments` | ✅ | ✅ |
+| Attendance | `/admin/attendance` | ✅ | ✅ |
+| Fees & Challans | `/admin/fees` | ✅ | ✅ |
+| Notifications | `/admin/notifications` | ✅ | ✅ |
+
+> Moderators use the same staff portal but delete buttons are hidden. Mobile bottom nav is available on student portal pages.
 
 ---
 
@@ -200,18 +233,19 @@ StudentWise123!
 | `maryam@studentwise.test` | student | Maryam Khan | Student `2025-BSEE-0118` | EE department, paid fees |
 | `teacher@studentwise.test` | teacher | Dr. Aamir Khan | Teacher `FAC-2018-014` | **Teacher demo** — Reports page |
 
-### Admin Login — `/admin/login`
+### Staff Login — `/admin/login`
 
 | Email | Role | Display Name | Best For Demo |
 |-------|------|--------------|---------------|
-| `admin@studentwise.test` | admin | Portal Admin | **Admin CRUD demo** — full management panel |
+| `admin@studentwise.test` | admin | Portal Admin | **Full staff demo** — CRUD + delete |
+| `moderator@studentwise.test` | moderator | Portal Moderator | **Limited staff demo** — CRUD without delete |
 
 ### Per-User Demo Highlights
 
 **Sarah Ahmed** (`sarah@studentwise.test`)
 - 6 enrolled courses: CS-304, CS-307, CS-401, CS-403, CS-411, MATH-204
 - Real attendance records (e.g., OS at 68% — short attendance alert)
-- Fee history + Fall 2026 semester balance (PKR 98,000 total)
+- Fee history + Spring 2026 semester balance (PKR)
 - Grades for Fall 2025 and Spring 2025
 - 4 notifications (2 unread)
 
@@ -229,52 +263,84 @@ StudentWise123!
 - Access to Reports & Analytics with live charts
 
 **Portal Admin** (`admin@studentwise.test`)
-- Full Admin Dashboard at `/admin/dashboard`
-- CRUD students, teachers, courses (persisted to Supabase)
+- Full staff portal at `/admin/dashboard`
+- CRUD students, teachers, courses, attendance, fees (persisted to Supabase)
+
+**Portal Moderator** (`moderator@studentwise.test`)
+- Same staff portal as admin
+- Can edit records but cannot delete students, teachers, or courses
 
 ---
 
 ## 7. Database Schema
 
-### Tables (11 total)
+### Tables (13 total)
 
 | Table | Description |
 |-------|-------------|
 | `departments` | CS, EE, BBA, MATH |
-| `profiles` | User profiles linked to `auth.users` |
+| `profiles` | User profiles linked to `auth.users` (includes notification prefs) |
 | `students` | Student records (ID, GPA, credits, fee status) |
 | `teachers` | Faculty records |
 | `courses` | Course catalog with instructor assignment |
 | `enrollments` | Student ↔ course mapping per semester |
-| `attendance_records` | Auto-calculated attendance % per enrollment |
+| `attendance_records` | Auto-calculated attendance % per enrollment (synced from sessions) |
+| `class_sessions` | Individual class dates/times per course (Fall 2026 term) |
+| `session_attendance` | Per-session present/absent marks per enrollment |
 | `fee_transactions` | Payment history (PKR) |
 | `semester_fees` | Current semester fee balances |
 | `course_grades` | Semester grades and grade points |
 | `notifications` | User-specific alerts (fee, attendance, course, announcement) |
 
+### Profile Notification Columns
+- `notify_email` — email notification toggle
+- `notify_push` — push notification toggle
+- `notify_fee_reminders` — fee reminder toggle
+
 ### Enums
 - `fee_status`: Paid, Pending, Overdue
 - `person_status`: Active, Hold, On Leave
+- `profiles.role`: student, teacher, admin, moderator
 
 ### Security
 - **RLS enabled** on all public tables
 - Students read **own** records only
 - Teachers read students, enrollments, attendance (read-only)
-- Admins have **full CRUD** on all tables
+- **Staff** (`admin` + `moderator`) have CRUD on all management tables via `is_staff()`
+- **Admins** retain elevated delete privileges via `is_admin()` where applicable
 - Auto-profile trigger on new auth user signup
+- `sync_enrollment_attendance_summary` trigger keeps `attendance_records` in sync with `session_attendance`
+
+### Realtime Publications
+Tables published to `supabase_realtime`: `enrollments`, `notifications`, `semester_fees`, `course_grades`, `attendance_records`, `class_sessions`, `session_attendance`
 
 ### Migrations
 | File | Description |
 |------|-------------|
 | `20250610000000_initial_schema.sql` | Core schema + RLS policies |
 | `20250610100000_grades_notifications.sql` | Grades, notifications, teacher read policies |
+| `20250610200000_moderator_settings_realtime.sql` | Moderator role, notification prefs, staff RLS, realtime |
+| `20250610300000_moderator_auth_user.sql` | Moderator demo auth user |
+| `20250610400000_class_sessions_attendance.sql` | Session-level attendance + summary sync trigger |
 
 ### Seed Scripts
 | File / Command | Purpose |
 |----------------|---------|
 | `supabase/seed.sql` | Demo departments, students, courses, enrollments, fees, grades |
-| `supabase/seed-auth-users.sql` | 5 test auth users with fixed UUIDs |
+| `supabase/seed-cloud-complete.sql` | Full cloud seed (recommended for Supabase cloud) |
+| `supabase/seed-auth-users.sql` | 6 test auth users with fixed UUIDs |
+| `supabase/seed-fall-attendance.sql` | Fall 2026 class sessions + attendance marks |
 | `npm run seed:users` | Admin API seed script (recommended for cloud) |
+| `npm run db:seed:cloud` | Push cloud-complete seed via Supabase CLI |
+| `npm run db:seed:attendance` | Push Fall 2026 attendance calendar |
+
+### Academic Terms (constants)
+| Constant | Value |
+|----------|-------|
+| `CURRENT_SEMESTER` | Spring 2026 |
+| `ATTENDANCE_TERM` | Fall 2026 |
+| `ATTENDANCE_TERM_START` | 2026-01-01 |
+| `ATTENDANCE_TERM_END` | 2026-06-05 |
 
 ---
 
@@ -287,64 +353,92 @@ All data access goes through TanStack Start server functions in `src/lib/supabas
 | `fetchPortalDashboard` | GET | Role-aware dashboard stats and charts |
 | `fetchStudentCourses` | GET | Enrolled courses with attendance |
 | `fetchStudentAttendance` | GET | Per-course attendance + summary |
+| `fetchAdminAttendance` | GET | Staff attendance grid (sessions per student/course) |
+| `adminUpdateSessionAttendance` | POST | Mark present/absent for a class session |
 | `fetchStudentFees` | GET | Semester fees + transaction history |
+| `generateFeeInvoice` | GET | Generate fee challan for student |
 | `fetchTeachersDirectory` | GET | Faculty directory |
 | `fetchStudentResults` | GET | Grades grouped by semester |
 | `fetchNotifications` | GET | User notifications |
+| `fetchUnreadNotificationCount` | GET | Unread notification badge count |
 | `markNotificationsRead` | POST | Mark all notifications as read |
+| `markNotificationRead` | POST | Mark single notification as read |
 | `fetchReportsData` | GET | Analytics for teachers/admins |
-| `fetchAdminData` | GET | Admin panel data (students, teachers, courses) |
+| `fetchAdminData` | GET | Staff panel summary data |
+| `fetchAdminEnrollments` | GET | Enrollment list for staff portal |
+| `fetchAdminStudentGrades` | GET | Grades for a specific student |
 | `fetchDepartments` | GET | Department list for forms |
+| `fetchUserSettings` | GET | Profile + notification preferences |
+| `updateUserProfile` | POST | Save display name |
+| `updateNotificationPreferences` | POST | Save notification toggles |
+| `changeUserPassword` | POST | Change account password |
 | `adminUpsertStudent` | POST | Create/update student |
-| `adminDeleteStudent` | POST | Delete student |
+| `adminDeleteStudent` | POST | Delete student (admin only) |
 | `adminUpsertTeacher` | POST | Create/update teacher |
-| `adminDeleteTeacher` | POST | Delete teacher |
+| `adminDeleteTeacher` | POST | Delete teacher (admin only) |
 | `adminUpsertCourse` | POST | Create/update course |
-| `adminDeleteCourse` | POST | Delete course |
+| `adminDeleteCourse` | POST | Delete course (admin only) |
 | `adminEnrollStudent` | POST | Enroll student in course |
 | `adminUnenrollStudent` | POST | Remove enrollment |
 | `adminAssignInstructor` | POST | Assign teacher to course |
+| `adminUpsertGrade` | POST | Create/update student grade |
+| `adminRegenerateChallan` | POST | Regenerate fee challan for student |
+| `adminUpdateChallanStatus` | POST | Update fee status (Paid/Pending/Overdue) |
+| `adminCreateNotification` | POST | Send notification to a user |
 
 ---
 
 ## 9. Development Timeline & Effort
 
-### Git Commit History (June 10, 2026)
+### Git Commit History
+
+**Phase 1 — Foundation & Deploy (June 10, 2026)**
 
 | # | Commit | Description |
 |---|--------|-------------|
-| 1 | `99f4c4e` | **Initial commit** — StudentWise university dashboard (UI scaffold) |
-| 2 | `f1a1ca4` | Initial commit to repo |
-| 3 | `c07795a` | Redeploy |
-| 4 | `095cf4d` | **Vercel account** setup and deployment config |
-| 5 | `521a6c1` | Removed Lovable branding — custom StudentWise identity |
-| 6 | `5a70dbe` | **Auth setup** — Supabase login, signup, session cookies, test users |
-| 7 | `6850f09` | **Admin route** — dedicated admin login + admin dashboard |
-| 8 | `ee52777` | Fix dashboard navigation buttons |
-| 9 | `cdee9f2` | **Dynamic data** — live Supabase integration across all pages |
-| 10 | `529fcaf` | Fix 404 errors on console |
-| 11 | `b2d522b` | Fix page not found on homepage |
+| 1 | `99f4c4e` | **Initial commit** — University dashboard UI scaffold |
+| 2–4 | `f1a1ca4`–`095cf4d` | Repo setup, Vercel deployment config |
+| 5 | `521a6c1` | Removed Lovable branding — custom identity |
+| 6 | `5a70dbe` | **Auth setup** — Supabase login, signup, session cookies |
+| 7 | `6850f09` | **Admin route** — dedicated staff login + dashboard |
+| 8–11 | `ee52777`–`b2d522b` | Live Supabase data, 404 fixes, homepage redirect |
+
+**Phase 2 — Staff Portal & Features (June 11–15, 2026)**
+
+| # | Commit | Description |
+|---|--------|-------------|
+| 12–16 | `09d338c`–`c8d1c35` | Env vars, Supabase key setup, build fixes |
+| 17 | `80d66fe` | **Admin courses** — add courses from staff panel |
+| 18 | `e2b7738` | **Complete seed** — cloud-ready demo data |
+| 19 | `c5addf3` | **New server functions** — settings, challans, attendance, notifications |
+| 20–24 | `9ec04db`–`c8d627a` | Attendance fixes, challan fixes, UI polish |
+| 25–26 | `959a816`–`afadd79` | UI updates and polishing |
+| 27 | `fd568e5` | **Rebranding** — StudentWise → UniFlow |
 
 ### Development Effort Summary
 
 | Area | Work Completed |
 |------|----------------|
-| **UI / UX** | 10+ portal pages, responsive sidebar layout, admin panel with dialogs/tabs/tables, Recharts dashboards, role-based navigation |
-| **Authentication** | Email/password login, signup with student linking, SSR cookie sessions, role guards, separate admin login |
-| **Database** | 2 migrations, 11 tables, RLS policies, triggers, seed data for 6 students + 4 teachers + 9 courses |
-| **Backend integration** | 19 server functions, typed Supabase client, admin CRUD mutations |
-| **DevOps** | Vercel deployment (Nitro preset), env config, cache headers, Node 22 runtime |
-| **Documentation** | README, AUTH_SETUP.md, user.md, seed scripts |
-| **Code volume** | 262 files changed since initial commit (~109K insertions) |
+| **UI / UX** | 10+ portal pages, staff portal with 8 sections, responsive sidebar + mobile nav, Recharts dashboards, role-based navigation |
+| **Authentication** | Email/password login, signup with student linking, SSR cookie sessions, role guards, separate staff login |
+| **Database** | 5 migrations, 13 tables, RLS policies, triggers, realtime publications, seed data |
+| **Backend integration** | 33 server functions, typed Supabase client, staff CRUD mutations |
+| **Realtime** | `useRealtimeInvalidate` hook — live refresh on 5+ tables |
+| **Attendance** | Session-level tracking, staff marking UI, auto-synced summary records |
+| **Fees** | Fee challan generation, staff challan management |
+| **Settings** | Persisted profile, notification prefs, password change |
+| **DevOps** | Vercel deployment (Nitro preset), env config, `db:deploy` auto-migrate, Node 22 runtime |
+| **Documentation** | README, AUTH_SETUP.md, user.md, PROJECT_SPEC.md, seed scripts |
 
 ### Key Milestones (for PPT slides)
 
 1. **Phase 1 — Foundation:** React dashboard UI with shadcn components
 2. **Phase 2 — Deploy:** Vercel + Nitro serverless + custom branding
 3. **Phase 3 — Auth:** Supabase Auth, profiles, role-based guards
-4. **Phase 4 — Admin:** Full admin CRUD panel
+4. **Phase 4 — Staff Portal:** Multi-section admin/moderator management panel
 5. **Phase 5 — Live Data:** Supabase Postgres integration on every page
-6. **Phase 6 — Polish:** 404 fixes, homepage redirect, production hardening
+6. **Phase 6 — Attendance & Fees:** Session attendance, challans, realtime sync
+7. **Phase 7 — Polish:** UniFlow rebrand, mobile nav, settings persistence, UI polish
 
 ---
 
@@ -352,7 +446,7 @@ All data access goes through TanStack Start server functions in `src/lib/supabas
 
 ### Vercel Configuration (`vercel.json`)
 - Framework: **TanStack Start**
-- Build: `npm run build`
+- Build: `npm run build` (optionally preceded by `npm run db:deploy`)
 - Node.js **22.x** runtime
 - Cache-Control: no-store for HTML, immutable for `/assets/**`
 
@@ -366,6 +460,14 @@ All data access goes through TanStack Start server functions in `src/lib/supabas
 | `SUPABASE_ANON_KEY` | Server (SSR) | ✅ |
 | `SUPABASE_SERVICE_ROLE_KEY` | Server (admin seed, signup linking) | ✅ |
 
+### Optional (auto-migrate on deploy)
+
+| Variable | Purpose |
+|----------|---------|
+| `SUPABASE_ACCESS_TOKEN` | Supabase account access token |
+| `SUPABASE_DB_PASSWORD` | Database password |
+| `SUPABASE_PROJECT_REF` | Project ref from Supabase URL |
+
 ### NPM Scripts
 
 | Command | Description |
@@ -374,10 +476,14 @@ All data access goes through TanStack Start server functions in `src/lib/supabas
 | `npm run build` | Production build |
 | `npm run preview` | Preview production build |
 | `npm run lint` | ESLint |
+| `npm run format` | Prettier format |
 | `npm run db:push` | Push migrations to Supabase |
+| `npm run db:deploy` | Auto-push migrations (Vercel build) |
 | `npm run db:reset` | Reset local DB with seed |
 | `npm run db:types` | Regenerate TypeScript types |
 | `npm run seed:users` | Create test auth users via Admin API |
+| `npm run db:seed:cloud` | Push full cloud seed |
+| `npm run db:seed:attendance` | Push Fall 2026 attendance calendar |
 
 ---
 
@@ -387,15 +493,17 @@ All data access goes through TanStack Start server functions in `src/lib/supabas
 
 1. **Landing** → Open `{BASE_URL}` → auto-redirect to login
 2. **Student view** → Login as `sarah@studentwise.test` / `StudentWise123!`
-3. **Dashboard** → Show GPA, attendance chart, course progress
+3. **Dashboard** → Show GPA, attendance chart, course progress (live realtime)
 4. **Courses** → 6 enrolled courses with attendance badges
 5. **Attendance** → Ring charts, short-attendance warning on OS
-6. **Fees** → PKR balance, payment history
+6. **Fees** → PKR balance, payment history, download challan
 7. **Results** → Semester grades table, CGPA
 8. **Notifications** → Unread fee + attendance alerts
-9. **Logout** → Sign out
-10. **Teacher view** → Login as `teacher@studentwise.test` → **Reports** page with charts
-11. **Admin view** → Go to `/admin/login` → `admin@studentwise.test` → CRUD a student or course live
+9. **Settings** → Update profile name, toggle notification prefs
+10. **Logout** → Sign out
+11. **Teacher view** → Login as `teacher@studentwise.test` → **Reports** page with charts
+12. **Admin view** → Go to `/admin/login` → `admin@studentwise.test` → CRUD a student, mark attendance, update fee status
+13. **Moderator view** → Login as `moderator@studentwise.test` → same portal, no delete buttons
 
 ---
 
@@ -405,34 +513,55 @@ All data access goes through TanStack Start server functions in `src/lib/supabas
 studentwise-dash/
 ├── src/
 │   ├── routes/              # File-based pages (TanStack Router)
-│   │   ├── admin/           # Admin login + dashboard
+│   │   ├── admin/           # Staff portal (8 sections)
+│   │   │   ├── dashboard.tsx
+│   │   │   ├── students.tsx
+│   │   │   ├── teachers.tsx
+│   │   │   ├── courses.tsx
+│   │   │   ├── enrollments.tsx
+│   │   │   ├── attendance.tsx
+│   │   │   ├── fees.tsx
+│   │   │   ├── notifications.tsx
+│   │   │   └── login.tsx
 │   │   ├── dashboard.tsx    # Main dashboard
 │   │   ├── courses.tsx      # Enrolled courses
 │   │   ├── attendance.tsx   # Attendance tracking
-│   │   ├── fees.tsx         # Fee management
+│   │   ├── fees.tsx         # Fee management + challan
 │   │   ├── teachers.tsx     # Faculty directory
 │   │   ├── results.tsx      # Academic grades
 │   │   ├── reports.tsx      # Analytics (teacher/admin)
 │   │   ├── notifications.tsx
-│   │   ├── settings.tsx
+│   │   ├── settings.tsx     # Persisted profile & prefs
 │   │   ├── login.tsx / signup.tsx
 │   │   └── index.tsx        # Root redirect
 │   ├── components/
-│   │   ├── AppLayout.tsx    # Sidebar + header shell
-│   │   ├── AdminLayout.tsx  # Admin panel shell
+│   │   ├── AppLayout.tsx    # Student portal shell + realtime
+│   │   ├── AdminLayout.tsx  # Staff portal shell
+│   │   ├── MobileNavBar.tsx # Mobile bottom navigation
+│   │   ├── NotificationBell.tsx
 │   │   └── ui/              # shadcn/ui components (40+)
 │   ├── lib/
 │   │   ├── supabase/        # Client, server, auth, data layer
 │   │   ├── auth-guards.ts   # Route protection
+│   │   ├── auth-types.ts    # Roles + isStaffRole helper
+│   │   ├── brand.ts         # UniFlow branding constants
+│   │   ├── constants.ts     # Semester / term dates
+│   │   ├── invoice.ts       # Fee challan generation
 │   │   └── database.types.ts
 │   └── hooks/
-│       └── use-auth.ts
+│       ├── use-auth.ts
+│       ├── use-staff-permissions.ts
+│       └── use-realtime-invalidate.ts
 ├── supabase/
-│   ├── migrations/          # Schema + RLS
-│   ├── seed.sql             # Demo data
-│   └── seed-auth-users.sql  # Test accounts
+│   ├── migrations/          # 5 schema + RLS migrations
+│   ├── seed.sql             # Local demo data
+│   ├── seed-cloud-complete.sql
+│   ├── seed-auth-users.sql  # 6 test accounts
+│   └── seed-fall-attendance.sql
 ├── scripts/
-│   └── seed-test-users.mjs  # Admin API user seeder
+│   ├── seed-test-users.mjs  # Admin API user seeder
+│   ├── seed-fall-attendance.mjs
+│   └── deploy-db.mjs        # Vercel auto-migrate
 ├── docs/
 │   ├── PROJECT_SPEC.md      # This document
 │   └── AUTH_SETUP.md        # Auth configuration guide
@@ -447,13 +576,13 @@ studentwise-dash/
 
 | Priority | Feature | Status |
 |----------|---------|--------|
-| High | Settings page — persist profile updates to Supabase | UI only |
 | High | Fee payment gateway integration | Not started |
-| Medium | Teacher — mark attendance for students | Not started |
-| Medium | Real-time notifications via Supabase Realtime | Infrastructure ready |
-| Medium | PDF export for results / fee receipts | Button UI exists |
-| Low | Mobile sidebar drawer | Partial (desktop sidebar) |
-| Low | Email notifications | Toggle in settings (UI only) |
+| Medium | PDF export for results / fee receipts | Challan UI exists; PDF export pending |
+| Medium | Email notifications (actual delivery) | Toggle persisted; delivery not wired |
+| Medium | Teacher self-service attendance marking | Staff portal only |
+| Low | Push notifications (browser/mobile) | Preference toggle saved |
+| Low | Bulk attendance import (CSV) | Not started |
+| Low | Multi-semester attendance history | Fall 2026 term only |
 
 ---
 
@@ -461,20 +590,23 @@ studentwise-dash/
 
 ```
 ┌──────────────────────────────────────────────────────────────┐
-│  STUDENTWISE — UNIVERSITY PORTAL                              │
+│  UNIFLOW — UNIVERSITY PORTAL                                  │
 ├──────────────────────────────────────────────────────────────┤
 │  Stack: React 19 · TanStack Start · Supabase · Vercel        │
 │  Repo:  github.com/mangiai/studentwise-dash                  │
 │  Local: http://localhost:3000                                │
 ├──────────────────────────────────────────────────────────────┤
 │  TEST USERS (password: StudentWise123!)                      │
-│  Student:  sarah@studentwise.test    → /login                │
-│  Teacher:  teacher@studentwise.test  → /login                │
-│  Admin:    admin@studentwise.test    → /admin/login          │
+│  Student:    sarah@studentwise.test     → /login             │
+│  Teacher:    teacher@studentwise.test   → /login             │
+│  Admin:      admin@studentwise.test     → /admin/login       │
+│  Moderator:  moderator@studentwise.test → /admin/login       │
 ├──────────────────────────────────────────────────────────────┤
 │  KEY ROUTES                                                   │
 │  /dashboard  /courses  /attendance  /fees  /results          │
-│  /teachers   /notifications  /reports  /admin/dashboard      │
+│  /teachers   /notifications  /reports  /settings             │
+│  /admin/dashboard  /admin/students  /admin/attendance        │
+│  /admin/fees  /admin/notifications                           │
 └──────────────────────────────────────────────────────────────┘
 ```
 

@@ -1,10 +1,12 @@
-# StudentWise — Test Users & Demo Reference
+# UniFlow — Test Users & Demo Reference
 
 All test accounts use the same password:
 
 ```
 StudentWise123!
 ```
+
+> **Build & deploy:** see [README.md](./README.md) for full step-by-step instructions (migrations → seeds → Vercel).
 
 ## Portal login (`/login`)
 
@@ -20,45 +22,24 @@ StudentWise123!
 | Email | Role | Name |
 |-------|------|------|
 | `admin@studentwise.test` | admin | Portal Admin |
+| `moderator@studentwise.test` | moderator | Portal Moderator |
 
-## What each user sees (live Supabase data)
-
-### Sarah Ahmed (`sarah@studentwise.test`)
-- **6 enrolled courses** with real attendance (CS-304, CS-307, CS-401, CS-403, CS-411, MATH-204)
-- **Fee history** and Fall 2026 semester balance
-- **Grades** for Fall 2025 and Spring 2025 semesters
-- **Notifications** (fee reminders, attendance alerts)
-
-### Hassan Raza (`hassan@studentwise.test`)
-- Pending fee status, 3 enrolled courses
-- Lower attendance on Operating Systems
-
-### Maryam Khan (`maryam@studentwise.test`)
-- Electrical Engineering student, paid fees
-- Software Engineering enrollment
-
-### Dr. Aamir Khan (`teacher@studentwise.test`)
-- Teacher profile linked to CS faculty
-- Access to **Reports** with live department/enrollment stats
-
-### Portal Admin (`admin@studentwise.test`)
-- Full **Admin Dashboard** at `/admin/dashboard`
-- CRUD students, teachers, courses (persisted to Supabase)
-- Manage enrollments per course
-
-## Seed commands (run once on Supabase cloud)
+## Quick seed (Supabase cloud, run once)
 
 ```bash
-# 1. Schema + demo data
-npx supabase db push
-npx supabase db query --linked --file supabase/seed.sql
+# 1. Migrations
+npm run db:push
 
-# 2. Auth users (pick one)
+# 2. Demo data — paste supabase/seed-cloud-complete.sql in SQL Editor, OR:
+npm run db:seed:cloud
+
+# 3. Auth users
 npm run seed:users
-# OR
-npx supabase db query --linked --file supabase/seed-auth-users.sql
+
+# 4. Fall 2026 attendance calendar
+npm run db:seed:attendance
 ```
 
 ## Environment variables
 
-See `.env.example` — all 5 Supabase keys must be set on Vercel and locally.
+See `.env.example` — all Supabase keys must be set locally and on Vercel. Service role key is required for reliable student data and seed scripts.

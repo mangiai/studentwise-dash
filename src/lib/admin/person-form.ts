@@ -31,7 +31,7 @@ export function validatePersonAccountFields(
 
   if (!fields.cnic.trim()) return "CNIC is required.";
   if (!isValidPakistanCnic(fields.cnic)) {
-    return "Enter a valid Pakistan CNIC (XXXXX-XXXXXXX-X).";
+    return "Enter CNIC as 13 digits (XXXXX-XXXXXXX-X). First digit must be 1–7.";
   }
 
   const dobError = getDateOfBirthError(fields.dateOfBirth);

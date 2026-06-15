@@ -14,23 +14,13 @@ export function formatCnic(value: string): string {
   return `${digits.slice(0, 5)}-${digits.slice(5, 12)}-${digits.slice(12)}`;
 }
 
-/** Pakistan CNIC: 13 digits, province code 1–7, valid check digit. */
+/** Pakistan CNIC: 13 digits with province code 1–7 (XXXXX-XXXXXXX-X). */
 export function isValidPakistanCnic(value: string): boolean {
   const digits = normalizeCnic(value);
   if (!digits) return false;
 
   const province = Number(digits[0]);
-  if (province < 1 || province > 7) return false;
-
-  const weights = [1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2];
-  let sum = 0;
-  for (let i = 0; i < 12; i++) {
-    let product = Number(digits[i]) * weights[i];
-    if (product > 9) product -= 9;
-    sum += product;
-  }
-  const checkDigit = (10 - (sum % 10)) % 10;
-  return checkDigit === Number(digits[12]);
+  return province >= 1 && province <= 7;
 }
 
 export const PASSWORD_RULES = {
@@ -102,7 +92,7 @@ export function getDateOfBirthError(value: string): string | null {
 export const cnicSchema = z
   .string()
   .min(1, "CNIC is required.")
-  .refine(isValidPakistanCnic, "Enter a valid Pakistan CNIC (XXXXX-XXXXXXX-X).");
+  .refine(isValidPakistanCnic, "Enter CNIC as 13 digits (XXXXX-XXXXXXX-X). First digit must be 1–7.");
 
 export const passwordSchema = z
   .string()

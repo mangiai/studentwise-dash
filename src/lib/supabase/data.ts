@@ -82,6 +82,193 @@ const TEST_STUDENT_LINKS: Record<string, string> = {
   "maryam@studentwise.test": "2025-BSEE-0118",
 };
 
+const TEST_TEACHER_LINKS: Record<string, string> = {
+  "teacher@studentwise.test": "FAC-2018-014",
+};
+
+export type TeacherCourseRoster = {
+  id: string;
+  name: string;
+  credits: number;
+  status: string;
+  enrolledCount: number;
+  avgAttendance: number;
+  students: {
+    id: string;
+    name: string;
+    semester: number;
+    attendance: number;
+    classesAttended: number;
+    totalClasses: number;
+    atRisk: boolean;
+  }[];
+};
+
+async function getLinkedTeacherId(userId: string, email?: string | null) {
+  const normalizedEmail = email?.trim().toLowerCase();
+
+  if (process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    const admin = getSupabaseServiceClient();
+
+    const { data: linked } = await admin
+      .from("teachers")
+      .select("id")
+      .eq("user_id", userId)
+      .maybeSingle();
+    if (linked?.id) return linked.id;
+
+    const teacherRecordId = normalizedEmail ? TEST_TEACHER_LINKS[normalizedEmail] : undefined;
+    if (!teacherRecordId) return null;
+
+    await admin.from("profiles").upsert({
+      id: userId,
+      full_name: normalizedEmail,
+      role: "teacher",
+    });
+
+    const { error } = await admin.from("teachers").update({ user_id: userId }).eq("id", teacherRecordId);
+    if (error) {
+      console.error("Auto-link teacher failed:", error.message);
+    }
+    return teacherRecordId;
+  }
+
+  const supabase = getSupabaseServerClient();
+  const { data } = await supabase.from("teachers").select("id").eq("user_id", userId).maybeSingle();
+  if (data?.id) return data.id;
+
+  return normalizedEmail ? (TEST_TEACHER_LINKS[normalizedEmail] ?? null) : null;
+}
+
+async function fetchTeacherClassRoster(teacherId: string) {
+  const admin = getSupabaseServiceClient();
+
+  const { data: courses, error: coursesError } = await admin
+    .from("courses")
+    .select("id, name, credits, status")
+    .eq("instructor_id", teacherId)
+    .order("name");
+
+  if (coursesError) {
+    console.error("fetchTeacherClassRoster courses:", coursesError.message);
+    return { courses: [] as TeacherCourseRoster[], uniqueStudents: 0, avgAttendance: 0, atRiskCount: 0 };
+  }
+
+  if (!courses?.length) {
+    return { courses: [] as TeacherCourseRoster[], uniqueStudents: 0, avgAttendance: 0, atRiskCount: 0 };
+  }
+
+  const courseIds = courses.map((c) => c.id);
+  const { data: enrollments, error: enrollError } = await admin
+    .from("enrollments")
+    .select(`
+      id, course_id,
+      students ( id, name, semester ),
+      attendance_records ( total_classes, classes_attended, percentage )
+    `)
+    .in("course_id", courseIds)
+    .eq("semester", CURRENT_SEMESTER);
+
+  if (enrollError) {
+    console.error("fetchTeacherClassRoster enrollments:", enrollError.message);
+  }
+
+  const enrollmentIds = (enrollments ?? []).map((e) => e.id);
+  const attByEnrollment = new Map<string, { total: number; attended: number }>();
+
+  if (enrollmentIds.length > 0) {
+    const { data: marks, error: marksError } = await admin
+      .from("session_attendance")
+      .select("enrollment_id, present")
+      .in("enrollment_id", enrollmentIds);
+
+    if (marksError) {
+      console.error("fetchTeacherClassRoster session_attendance:", marksError.message);
+    }
+
+    for (const id of enrollmentIds) {
+      attByEnrollment.set(id, { total: 0, attended: 0 });
+    }
+    for (const mark of marks ?? []) {
+      const bucket = attByEnrollment.get(mark.enrollment_id);
+      if (!bucket) continue;
+      bucket.total += 1;
+      if (mark.present) bucket.attended += 1;
+    }
+  }
+
+  const enrollmentsByCourse = new Map<string, typeof enrollments>();
+  for (const enrollment of enrollments ?? []) {
+    const list = enrollmentsByCourse.get(enrollment.course_id) ?? [];
+    list.push(enrollment);
+    enrollmentsByCourse.set(enrollment.course_id, list);
+  }
+
+  const uniqueStudentIds = new Set<string>();
+  let attendanceSum = 0;
+  let attendanceCount = 0;
+  let atRiskCount = 0;
+
+  const rosterCourses: TeacherCourseRoster[] = courses.map((course) => {
+    const courseEnrollments = enrollmentsByCourse.get(course.id) ?? [];
+    const students = courseEnrollments.map((enrollment) => {
+      const sessionStats = attByEnrollment.get(enrollment.id);
+      const record = enrollment.attendance_records?.[0];
+      const totalClasses = sessionStats?.total
+        ? sessionStats.total
+        : (record?.total_classes ?? 0);
+      const classesAttended = sessionStats?.total
+        ? sessionStats.attended
+        : (record?.classes_attended ?? 0);
+      const attendance =
+        sessionStats && sessionStats.total > 0
+          ? Math.round((sessionStats.attended / sessionStats.total) * 100)
+          : Number(record?.percentage ?? 0);
+      const atRisk = totalClasses > 0 && attendance < 75;
+
+      uniqueStudentIds.add(enrollment.students?.id ?? "");
+      if (totalClasses > 0) {
+        attendanceSum += attendance;
+        attendanceCount += 1;
+        if (atRisk) atRiskCount += 1;
+      }
+
+      return {
+        id: enrollment.students?.id ?? "",
+        name: enrollment.students?.name ?? "Student",
+        semester: enrollment.students?.semester ?? 0,
+        attendance,
+        classesAttended,
+        totalClasses,
+        atRisk,
+      };
+    });
+
+    const courseAttValues = students.filter((s) => s.totalClasses > 0).map((s) => s.attendance);
+    const avgAttendance =
+      courseAttValues.length > 0
+        ? Math.round(courseAttValues.reduce((sum, value) => sum + value, 0) / courseAttValues.length)
+        : 0;
+
+    return {
+      id: course.id,
+      name: course.name,
+      credits: course.credits,
+      status: course.status,
+      enrolledCount: students.length,
+      avgAttendance,
+      students: students.sort((a, b) => a.name.localeCompare(b.name)),
+    };
+  });
+
+  return {
+    courses: rosterCourses,
+    uniqueStudents: uniqueStudentIds.size,
+    avgAttendance: attendanceCount > 0 ? Math.round(attendanceSum / attendanceCount) : 0,
+    atRiskCount,
+  };
+}
+
 function getStudentDataClient() {
   if (process.env.SUPABASE_SERVICE_ROLE_KEY) {
     return getSupabaseServiceClient();
@@ -137,7 +324,43 @@ export const fetchPortalDashboard = createServerFn({ method: "GET" }).handler(as
   const role = await getProfileRole(user.id);
   const studentId = await getLinkedStudentId(user.id, user.email);
 
-  if (role === "admin" || role === "teacher") {
+  if (role === "teacher") {
+    const teacherId = await getLinkedTeacherId(user.id, user.email);
+    if (!teacherId) {
+      return {
+        configured: true as const,
+        data: {
+          role,
+          stats: null,
+          courseDist: [],
+          upcoming: [],
+          student: null,
+          teacherCourses: [] as TeacherCourseRoster[],
+        },
+      };
+    }
+
+    const roster = await fetchTeacherClassRoster(teacherId);
+
+    return {
+      configured: true as const,
+      data: {
+        role,
+        stats: {
+          courses: roster.courses.length,
+          enrolledStudents: roster.uniqueStudents,
+          avgAttendance: roster.avgAttendance,
+          atRiskCount: roster.atRiskCount,
+        },
+        courseDist: [],
+        upcoming: [],
+        student: null,
+        teacherCourses: roster.courses,
+      },
+    };
+  }
+
+  if (role === "admin") {
     const [students, courses, teachers, pendingFees, enrollments] = await Promise.all([
       supabase.from("students").select("id", { count: "exact", head: true }),
       supabase.from("courses").select("id", { count: "exact", head: true }),
@@ -176,12 +399,13 @@ export const fetchPortalDashboard = createServerFn({ method: "GET" }).handler(as
         courseDist,
         upcoming: [],
         student: null,
+        teacherCourses: [] as TeacherCourseRoster[],
       },
     };
   }
 
   if (!studentId) {
-    return { configured: true as const, data: { role, stats: null, courseDist: [], upcoming: [], student: null } };
+    return { configured: true as const, data: { role, stats: null, courseDist: [], upcoming: [], student: null, teacherCourses: [] as TeacherCourseRoster[] } };
   }
 
   const db = getStudentDataClient();
@@ -250,6 +474,7 @@ export const fetchPortalDashboard = createServerFn({ method: "GET" }).handler(as
       courseDist: [],
       upcoming,
       student,
+      teacherCourses: [] as TeacherCourseRoster[],
     },
   };
 });
@@ -257,13 +482,32 @@ export const fetchPortalDashboard = createServerFn({ method: "GET" }).handler(as
 // ─── Student courses ─────────────────────────────────────────────────────────
 
 export const fetchStudentCourses = createServerFn({ method: "GET" }).handler(async () => {
-  if (!isSupabaseServerConfigured()) return { configured: false as const, courses: [] };
+  if (!isSupabaseServerConfigured()) return { configured: false as const, courses: [], view: "student" as const };
 
   const user = await getSessionUser();
-  if (!user) return { configured: true as const, courses: [] };
+  if (!user) return { configured: true as const, courses: [], view: "student" as const };
+
+  const role = await getProfileRole(user.id);
+  if (role === "teacher") {
+    const teacherId = await getLinkedTeacherId(user.id, user.email);
+    if (!teacherId) return { configured: true as const, courses: [], view: "teacher" as const };
+
+    const roster = await fetchTeacherClassRoster(teacherId);
+    const courses = roster.courses.map((course) => ({
+      name: course.name,
+      code: course.id,
+      teacher: "You",
+      credits: course.credits,
+      att: course.avgAttendance,
+      status: course.status,
+      enrolledCount: course.enrolledCount,
+    }));
+
+    return { configured: true as const, courses, view: "teacher" as const };
+  }
 
   const studentId = await getLinkedStudentId(user.id, user.email);
-  if (!studentId) return { configured: true as const, courses: [] };
+  if (!studentId) return { configured: true as const, courses: [], view: "student" as const };
 
   const db = getStudentDataClient();
   const { data, error } = await db
@@ -276,7 +520,7 @@ export const fetchStudentCourses = createServerFn({ method: "GET" }).handler(asy
 
   if (error) {
     console.error("fetchStudentCourses:", error.message, { studentId });
-    return { configured: true as const, courses: [] as const };
+    return { configured: true as const, courses: [] as const, view: "student" as const };
   }
 
   const attendanceRows = await resolveStudentAttendanceCourseRows(studentId);
@@ -291,7 +535,7 @@ export const fetchStudentCourses = createServerFn({ method: "GET" }).handler(asy
     status: row.courses?.status ?? "Ongoing",
   }));
 
-  return { configured: true as const, courses };
+  return { configured: true as const, courses, view: "student" as const };
 });
 
 // ─── Attendance ──────────────────────────────────────────────────────────────
@@ -401,6 +645,117 @@ function summarizeStudentAttendance(
 
   return { overall, totalClasses, totalAttended, shortCount, active };
 }
+
+export const fetchAttendancePage = createServerFn({ method: "GET" }).handler(async () => {
+  if (!isSupabaseServerConfigured()) {
+    return {
+      configured: false as const,
+      view: "student" as const,
+      rows: [],
+      summary: null,
+      sessions: [],
+      teacherCourses: [] as TeacherCourseRoster[],
+      term: ATTENDANCE_TERM,
+    };
+  }
+
+  const user = await getSessionUser();
+  if (!user) {
+    return {
+      configured: true as const,
+      view: "student" as const,
+      rows: [],
+      summary: null,
+      sessions: [],
+      teacherCourses: [] as TeacherCourseRoster[],
+      term: ATTENDANCE_TERM,
+    };
+  }
+
+  const role = await getProfileRole(user.id);
+  if (role === "teacher") {
+    const teacherId = await getLinkedTeacherId(user.id, user.email);
+    if (!teacherId) {
+      return {
+        configured: true as const,
+        view: "teacher" as const,
+        rows: [],
+        summary: null,
+        sessions: [],
+        teacherCourses: [] as TeacherCourseRoster[],
+        term: ATTENDANCE_TERM,
+      };
+    }
+
+    const roster = await fetchTeacherClassRoster(teacherId);
+    return {
+      configured: true as const,
+      view: "teacher" as const,
+      rows: [],
+      summary: null,
+      sessions: [],
+      teacherCourses: roster.courses,
+      term: ATTENDANCE_TERM,
+    };
+  }
+
+  const studentId = await getLinkedStudentId(user.id, user.email);
+  if (!studentId) {
+    return {
+      configured: true as const,
+      view: "student" as const,
+      rows: [],
+      summary: null,
+      sessions: [],
+      teacherCourses: [] as TeacherCourseRoster[],
+      term: ATTENDANCE_TERM,
+    };
+  }
+
+  const courseRows = await resolveStudentAttendanceCourseRows(studentId);
+  const rows = courseRows
+    .filter((r) => r.att > 0)
+    .map(({ enrollmentId: _e, sessions: _s, ...row }) => row);
+  const allSessions = courseRows
+    .flatMap((r) => r.sessions)
+    .filter((s) => s.id && s.date)
+    .sort((a, b) => `${a.date}${a.startTime}`.localeCompare(`${b.date}${b.startTime}`));
+  const { overall, totalClasses, totalAttended, shortCount } = summarizeStudentAttendance(courseRows);
+
+  return {
+    configured: true as const,
+    view: "student" as const,
+    rows,
+    sessions: allSessions,
+    teacherCourses: [] as TeacherCourseRoster[],
+    term: ATTENDANCE_TERM,
+    summary: { overall, totalClasses, totalAttended, shortCount },
+  };
+});
+
+export const fetchTeacherAttendance = createServerFn({ method: "GET" }).handler(async () => {
+  if (!isSupabaseServerConfigured()) {
+    return { configured: false as const, courses: [] as TeacherCourseRoster[], term: ATTENDANCE_TERM };
+  }
+
+  const user = await getSessionUser();
+  if (!user) {
+    return { configured: true as const, courses: [] as TeacherCourseRoster[], term: ATTENDANCE_TERM };
+  }
+
+  const role = await getProfileRole(user.id);
+  if (role !== "teacher") {
+    return { configured: true as const, courses: [] as TeacherCourseRoster[], term: ATTENDANCE_TERM };
+  }
+
+  const teacherId = await getLinkedTeacherId(user.id, user.email);
+  if (!teacherId) {
+    return { configured: true as const, courses: [] as TeacherCourseRoster[], term: ATTENDANCE_TERM };
+  }
+
+  const roster = await fetchTeacherClassRoster(teacherId);
+  return { configured: true as const, courses: roster.courses, term: ATTENDANCE_TERM };
+});
 
 export const fetchStudentAttendance = createServerFn({ method: "GET" }).handler(async () => {
   if (!isSupabaseServerConfigured()) return { configured: false as const, rows: [], summary: null, sessions: [], term: ATTENDANCE_TERM };

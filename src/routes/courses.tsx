@@ -27,14 +27,26 @@ function attBadge(att: number) {
 }
 
 function Courses() {
-  const { configured, courses } = Route.useLoaderData();
+  const { configured, courses, view } = Route.useLoaderData();
   const credits = courses.reduce((a, c) => a + c.credits, 0);
+  const isTeacherView = view === "teacher";
 
   return (
-    <AppLayout title="Enrolled Courses" subtitle={`${courses.length} active courses · ${credits} credit hours this semester`}>
+    <AppLayout
+      title={isTeacherView ? "My Courses" : "Enrolled Courses"}
+      subtitle={
+        isTeacherView
+          ? `${courses.length} courses you teach · ${CURRENT_SEMESTER}`
+          : `${courses.length} active courses · ${credits} credit hours this semester`
+      }
+    >
       {!configured && <p className="text-sm text-muted-foreground mb-4">Supabase not configured.</p>}
       {courses.length === 0 && (
-        <p className="text-sm text-muted-foreground">No courses enrolled for {CURRENT_SEMESTER}.</p>
+        <p className="text-sm text-muted-foreground">
+          {isTeacherView
+            ? `No courses assigned for ${CURRENT_SEMESTER}.`
+            : `No courses enrolled for ${CURRENT_SEMESTER}.`}
+        </p>
       )}
       <Tabs defaultValue="cards" className="w-full">
         <TabsList>
@@ -58,8 +70,12 @@ function Courses() {
                   </div>
                   <div className="flex items-center gap-3 text-xs">
                     <Badge variant="outline">{c.credits} credits</Badge>
-                    {attBadge(c.att)}
+                    {isTeacherView && "enrolledCount" in c && (
+                      <Badge variant="outline">{c.enrolledCount} students</Badge>
+                    )}
+                    {!isTeacherView && attBadge(c.att)}
                   </div>
+                  {!isTeacherView && (
                   <div>
                     <div className="flex items-center justify-between text-xs mb-1.5">
                       <span className="text-muted-foreground">Attendance</span>
@@ -67,6 +83,16 @@ function Courses() {
                     </div>
                     <Progress value={c.att} className={`h-2 ${c.att < 75 ? "[&>div]:bg-destructive" : ""}`} />
                   </div>
+                  )}
+                  {isTeacherView && (
+                  <div>
+                    <div className="flex items-center justify-between text-xs mb-1.5">
+                      <span className="text-muted-foreground">Class avg attendance</span>
+                      <span className={`font-medium ${c.att < 75 ? "text-destructive" : ""}`}>{c.att}%</span>
+                    </div>
+                    <Progress value={c.att} className={`h-2 ${c.att < 75 ? "[&>div]:bg-destructive" : ""}`} />
+                  </div>
+                  )}
                   <Button variant="outline" className="w-full" size="sm">
                     View Details <ChevronRight className="size-3" />
                   </Button>

@@ -5,7 +5,7 @@ import { InteractiveCard, AnimatedGrid } from "@/components/motion";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
-import { Users, BookOpen, CalendarCheck2, Wallet, TrendingUp, Clock, ArrowUpRight } from "lucide-react";
+import { Users, BookOpen, CalendarCheck2, Wallet, TrendingUp, Clock, ArrowUpRight, AlertTriangle } from "lucide-react";
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   BarChart, Bar, PieChart, Pie, Cell, Legend,
@@ -14,6 +14,8 @@ import { requireAuth } from "@/lib/auth-guards";
 import { pageHead } from "@/lib/seo";
 import { useAuthUser } from "@/hooks/use-auth";
 import { fetchPortalDashboard } from "@/lib/supabase/data";
+import { ClassRosterTable } from "@/components/teacher/ClassRosterTable";
+import { CURRENT_SEMESTER } from "@/lib/constants";
 export const Route = createFileRoute("/dashboard")({
   head: () => pageHead("Dashboard"),
   beforeLoad: ({ context }) => {
@@ -36,9 +38,73 @@ function Dashboard() {
     );
   }
 
-  const isStaff = data?.role === "admin" || data?.role === "teacher";
+  const isAdmin = data?.role === "admin";
+  const isTeacher = data?.role === "teacher";
 
-  if (isStaff && data?.stats && "students" in data.stats) {
+  if (isTeacher && data?.stats && "enrolledStudents" in data.stats) {
+    const s = data.stats;
+    const teacherStats = [
+      { label: "My Courses", value: String(s.courses), icon: BookOpen, tint: "bg-primary/10 text-primary" },
+      { label: "Enrolled Students", value: s.enrolledStudents.toLocaleString(), icon: Users, tint: "bg-accent/10 text-accent" },
+      { label: "Avg Attendance", value: `${s.avgAttendance}%`, icon: CalendarCheck2, tint: "bg-emerald-500/10 text-emerald-600" },
+      { label: "Short Attendance", value: String(s.atRiskCount), icon: AlertTriangle, tint: "bg-destructive/10 text-destructive" },
+    ];
+    const teacherCourses = data.teacherCourses ?? [];
+
+    return (
+      <AppLayout title={`Welcome back, ${firstName}`} subtitle={`Your classes · ${CURRENT_SEMESTER}`}>
+        <AnimatedGrid className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          {teacherStats.map((item) => (
+            <InteractiveCard key={item.label}>
+              <CardContent className="p-5">
+                <div className={`size-10 rounded-lg grid place-content-center ${item.tint}`}>
+                  <item.icon className="size-5" />
+                </div>
+                <div className="mt-4 text-2xl font-semibold">{item.value}</div>
+                <div className="text-xs text-muted-foreground mt-1">{item.label}</div>
+              </CardContent>
+            </InteractiveCard>
+          ))}
+        </AnimatedGrid>
+
+        {teacherCourses.length === 0 ? (
+          <Card className="mt-6 border-dashed">
+            <CardContent className="p-5 text-sm text-muted-foreground">
+              No courses are assigned to you yet. Ask an admin to assign courses from the staff portal.
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="mt-6 space-y-4">
+            {teacherCourses.map((course) => (
+              <Card key={course.id}>
+                <CardHeader>
+                  <CardTitle className="text-base flex flex-wrap items-center gap-2">
+                    {course.name}
+                    <Badge variant="outline">{course.credits} credits</Badge>
+                    <Badge variant="secondary">{course.status}</Badge>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <ClassRosterTable course={course} />
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
+
+        <div className="mt-6 flex flex-wrap gap-3">
+          <Link to="/attendance">
+            <Button variant="outline">View class attendance <ArrowUpRight className="size-3 ml-1" /></Button>
+          </Link>
+          <Link to="/reports">
+            <Button variant="outline">Reports & analytics <ArrowUpRight className="size-3 ml-1" /></Button>
+          </Link>
+        </div>
+      </AppLayout>
+    );
+  }
+
+  if (isAdmin && data?.stats && "students" in data.stats) {
     const s = data.stats;
     const staffStats = [
       { label: "Enrolled Students", value: s.students.toLocaleString(), icon: Users, tint: "bg-accent/10 text-accent" },

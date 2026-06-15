@@ -9,8 +9,9 @@ import { Calendar } from "@/components/ui/calendar";
 import { AlertTriangle, CheckCircle2, XCircle } from "lucide-react";
 import { pageHead } from "@/lib/seo";
 import { requireAuth } from "@/lib/auth-guards";
-import { fetchStudentAttendance } from "@/lib/supabase/data";
-import { ATTENDANCE_TERM, ATTENDANCE_TERM_END, ATTENDANCE_TERM_START } from "@/lib/constants";
+import { fetchAttendancePage } from "@/lib/supabase/data";
+import { ClassRosterTable } from "@/components/teacher/ClassRosterTable";
+import { ATTENDANCE_TERM, ATTENDANCE_TERM_END, ATTENDANCE_TERM_START, CURRENT_SEMESTER } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/attendance")({
@@ -18,7 +19,7 @@ export const Route = createFileRoute("/attendance")({
   beforeLoad: ({ context }) => {
     requireAuth(context.authUser);
   },
-  loader: () => fetchStudentAttendance(),
+  loader: () => fetchAttendancePage(),
   component: Attendance,
 });
 
@@ -71,7 +72,42 @@ function SessionItem({ session }: { session: SessionRow }) {
 }
 
 function Attendance() {
-  const { rows, summary, sessions, term, configured } = Route.useLoaderData();
+  const { rows, summary, sessions, term, configured, view, teacherCourses } = Route.useLoaderData();
+
+  if (view === "teacher") {
+    return (
+      <AppLayout
+        title="Class Attendance"
+        subtitle={`${term ?? ATTENDANCE_TERM} · Students enrolled in your courses`}
+      >
+        {configured && teacherCourses.length === 0 && (
+          <Card className="mb-6 border-dashed">
+            <CardContent className="p-5 text-sm text-muted-foreground">
+              No courses are assigned to you yet, or no students are enrolled for {CURRENT_SEMESTER}.
+            </CardContent>
+          </Card>
+        )}
+
+        <div className="space-y-4">
+          {teacherCourses.map((course) => (
+            <Card key={course.id}>
+              <CardHeader>
+                <CardTitle className="text-base flex flex-wrap items-center gap-2">
+                  {course.name}
+                  <Badge variant="outline" className="font-mono">{course.id}</Badge>
+                  <Badge variant="outline">{course.avgAttendance}% class average</Badge>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ClassRosterTable course={course} />
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </AppLayout>
+    );
+  }
+
   const overall = summary?.overall ?? 0;
   const termStart = parseISO(ATTENDANCE_TERM_START);
   const termEnd = parseISO(ATTENDANCE_TERM_END);
